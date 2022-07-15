@@ -75,6 +75,7 @@ class ImgaugPoseDataset(BasePoseDataset):
             )
 
         print("Batch Size is %d" % self.batch_size)
+        cfg["fog"] = cfg.get("fog", True)
 
     def load_dataset(self):
         cfg = self.cfg
@@ -192,6 +193,9 @@ class ImgaugPoseDataset(BasePoseDataset):
                 )
         if cfg.get("grayscale", False):
             pipeline.add(sometimes(iaa.Grayscale(alpha=(0.5, 1.0))))
+            
+        if cfg["fog"]:
+            pipeline.add(iaa.Fog())
 
         def get_aug_param(cfg_value):
             if isinstance(cfg_value, dict):
@@ -275,6 +279,7 @@ class ImgaugPoseDataset(BasePoseDataset):
                 )
             )
             pipeline.add(iaa.Resize({"height": height, "width": width}))
+       
         return pipeline
 
     def get_batch(self):
