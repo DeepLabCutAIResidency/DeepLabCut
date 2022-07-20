@@ -74,6 +74,18 @@ class ImgaugPoseDataset(BasePoseDataset):
                 cfg.get("motion_blur_params", {"k": 7, "angle": (-90, 90)})
             )
 
+        cfg["gaussian_blur"] = cfg.get("gaussian_blur", False)
+        if cfg["gaussian_blur"]:
+            cfg["gaussian_blur_params"] = dict(
+                cfg.get("gaussian_blur_params", {"sigma": (0.0, 3.0)})
+            )
+
+        cfg["multiply_and_add_to_brightness"] = cfg.get("multiply_and_add_to_brightness", False)
+        if cfg["multiply_and_add_to_brightness"]:
+            cfg["multiply_and_add_to_brightness_params"] = dict(
+                cfg.get("multiply_and_add_to_brightness_params", {"mul": (0.5, 1.5), "add": (-30, 30)})
+            )
+
         print("Batch Size is %d" % self.batch_size)
 
     def load_dataset(self):
@@ -163,6 +175,14 @@ class ImgaugPoseDataset(BasePoseDataset):
         if cfg["motion_blur"]:
             opts = cfg["motion_blur_params"]
             pipeline.add(sometimes(iaa.MotionBlur(**opts)))
+
+        if cfg["gaussian_blur"]:
+            opts = cfg["gaussian_blur_params"]
+            pipeline.add(sometimes(iaa.GaussianBlur(**opts)))
+
+        if cfg["multiply_and_add_to_brightness"]:
+            opts = cfg["multiply_and_add_to_brightness_params"]
+            pipeline.add(sometimes(iaa.MultiplyAndAddToBrightness(**opts)))
 
         if cfg["covering"]:
             pipeline.add(
