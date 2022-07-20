@@ -120,17 +120,40 @@ def create_parameters_dict():
 #############################################
 if __name__ == "__main__":
 
-    ##########################################################
-    ### Set config path of project with labelled data
+    ##############################################################
+    ## Parse command line input parameters
     # (we assume create_training_dataset has already been run)
-    config_path = sys.argv[1] #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
-
+    parser = argparse.ArgumentParser()
+    # required
+    parser.add_argument("config_path", #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+                        type=str,
+                        help="path to config.yaml file [required]")
+    parser.add_argument("subdir_prefix_str", 
+                        type=str,
+                        help="prefix common to all subdirectories to train [required]")
+    parser.add_argument("gpu_to_use", 
+                        type=int,
+                        help="id of gpu to use (as given by nvidia-smi) [required]")
+    # optional
+    parser.add_argument("--training_set_index", 
+                        type=int,
+                        default=0,
+                        help="Integer specifying which TrainingsetFraction to use. Note that TrainingFraction is a list in config.yaml.[optional]")
+    parser.add_argument("--train_iteration", 
+                        type=int,
+                        default=0, # default is 0, but in stinkbug is 1. can this be extracted?
+                        help="iteration number in terms of frames extraction and retraining workflow [optional]")
+    args = parser.parse_args()
+    
+    ##########################################################
+    ### Extract required input params
+    config_path = args.config_path
     # each model subfolder is named with the format: <modelprefix_pre>_<id>_<str_id>
-    modelprefix_pre = sys.argv[2] #"data_augm"
+    modelprefix_pre = args.subdir_prefix_str #"data_augm"
 
     # Other params
-    TRAINING_SET_INDEX=0 # default;
-    TRAIN_ITERATION=1 # iteration in terms of frames extraction; default is 0. can this be extracted?
+    TRAINING_SET_INDEX = args.training_set_index # default;
+    TRAIN_ITERATION = args.train_iteration # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
     ##########################################################
     ### Get config as dict and associated paths
