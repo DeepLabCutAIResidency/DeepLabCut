@@ -100,9 +100,19 @@ def create_parameters_dict():
     parameters_dict["elastic_transform"] = {False: {'elastic_transform': False},
                                             True: {'elastic_transform': True}}
 
-    ### Gaussian noise
-    parameters_dict['gaussian_noise'] = {False: {'gaussian_noise': False},
-                                        True: {'gaussian_noise': True}}
+    ### Cloudy weather
+    parameters_dict['cloudy'] = {False: {'clouds': False,
+                                         'fog': False,
+                                         'rain': False},
+                                True: {'clouds': True,
+                                         'fog': True,
+                                         'rain': True}}
+    ### Snowy weather
+    parameters_dict['snowy'] = {False: {'snow': False,
+                                         'snow_flakes': False},
+                                True: {'snow': True,
+                                         'snow_flakes': True}}
+
 
     return parameters_dict                                    
 
