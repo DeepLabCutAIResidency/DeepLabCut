@@ -177,7 +177,9 @@ if __name__ == "__main__":
                 'grayscale':        False,
                 'covering':         True,
                 'elastic_transform': True,
-                'gaussian_noise':   False}
+                'gaussian_noise':   False,
+                'cloudy':           False,
+                'snowy':            False}
 
     #################################################
     ## Create list of strings identifying each model
