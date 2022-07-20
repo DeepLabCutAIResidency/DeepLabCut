@@ -19,7 +19,7 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 import re
 import argparse
 import yaml
-import pdb
+# import pdb
 
 def create_parameters_dict():
     ##################################################################
@@ -104,6 +104,10 @@ def create_parameters_dict():
     parameters_dict["elastic_transform"] = {False: {'elastic_transform': False},
                                             True: {'elastic_transform': True}}
 
+    ### Gaussian noise
+    parameters_dict['gaussian_noise'] = {False: {'gaussian_noise': False},
+                                        True: {'gaussian_noise': True}}                                         
+
     ### Cloudy weather
     parameters_dict['cloudy'] = {False: {'clouds': False,
                                          'fog': False,
@@ -140,8 +144,9 @@ if __name__ == "__main__":
                         default='',
                         help="path to file that defines the data augmentation baseline [required]")                       
     # optional
-    parser.add_argument("--list_data_augm_idcs_to_flip", 
-                        type=list,
+    parser.add_argument('-l',"--list_data_augm_idcs_to_flip", 
+                        type=int,
+                        nargs='+',
                         default=[], #-----------------
                         help="List of indices of data augmentation methods (as listed in baseline yaml file) to inspect effect of.\
                               If no list is provided, the script generates a train config with every method 'flipped' \
@@ -207,21 +212,18 @@ if __name__ == "__main__":
     ## Define baseline
     with open(args.baseline_yaml_file_path,'r') as yaml_file:
         baseline = yaml.safe_load(yaml_file)
-    list_baseline_keys = baseline.keys()
+    list_baseline_keys = list(baseline.keys())
 
 
     #################################################
     ## Create list of strings identifying each model
     # if required: consider only specific data augmentation methods
-    pdb.set_trace()
     if bool(list_idcs_to_flip_from_baseline):
-        list_baseline_keys = list_baseline_keys[list_idcs_to_flip_from_baseline]
+        list_baseline_keys = [list_baseline_keys[i] for i in list_idcs_to_flip_from_baseline]
 
-    pdb.set_trace()
     list_of_data_augm_models_strs = ['baseline']
     for ky in list_baseline_keys: #baseline.keys() :
         list_of_data_augm_models_strs.append(ky) #'wo_' + ky)
-
 
     #########################################
     ## Loop to train each model
