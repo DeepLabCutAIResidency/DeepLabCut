@@ -80,7 +80,7 @@ class ImgaugPoseDataset(BasePoseDataset):
         cfg["snow"] = cfg.get("snow", False)
         cfg["clouds"] = cfg.get("clouds", False)
         cfg["fog"] = cfg.get("fog", False)
-        cfg["snowFlakes"] = cfg.get("snowFlakes", False)
+        cfg["snow_flakes"] = cfg.get("snow_flakes", False)
         cfg["rain"] = cfg.get("rain", False)
 
 
@@ -207,7 +207,7 @@ class ImgaugPoseDataset(BasePoseDataset):
         #conditions to weather
         if cfg["snow"]:
             pipeline.add(sometimes(iaa.FastSnowyLandscape(lightness_threshold=140,lightness_multiplier=2.5 )))
-        if cfg["snowFlakes"]:
+        if cfg["snow_flakes"]:
             pipeline.add(sometimes(iaa.SnowflakesLayer(density=(0.005, 0.075),
                 density_uniformity=(0.3, 0.9),
                 flake_size=(0.2, 0.7), flake_size_uniformity=(0.4, 0.8),
