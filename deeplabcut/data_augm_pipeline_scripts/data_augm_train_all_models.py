@@ -48,6 +48,10 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
     """
     Train all shuffles for a given model
 
+    Edit train config file:
+    - if initial weights for a certain shuffle are different from default ones
+    - if optimizer parameters are provided
+
     """
     
     ##########################################################
