@@ -214,7 +214,7 @@ class ImgaugPoseDataset(BasePoseDataset):
                 angle=(-30, 30), speed=(0.007, 0.03), blur_sigma_fraction=(0.0001, 0.001))))
         if cfg["fog"]:
             pipeline.add(sometimes(iaa.Fog()))
-        if cfg["cloud"]: # the default one
+        if cfg["clouds"]: # the default one
             pipeline.add(sometimes(iaa.CloudLayer(intensity_mean=(196, 255),
                 intensity_freq_exponent=(-2.5, -2.0),
                 intensity_coarse_scale=10,
