@@ -7,12 +7,26 @@ from deeplabcut.utils import auxiliaryfunctions
 import os
 import cv2
 
-
+# %%
 def PolyArea(x,y): 
     # https://en.wikipedia.org/wiki/Shoelace_formula
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
+def polygonArea(X, Y): 
+    # X and Y are numpy arrays of size nrows=N, ncolumns=2
 
+    n = X.shape[0]
+    # Initialize area
+    area = 0.0
+    # Calculate value of shoelace formula
+    j = n - 1
+    for i in range(0,n):
+        area += (X[j] + X[i]) * (Y[j] - Y[i])
+        j = i   # j is previous vertex to i
+    # Return absolute value
+    return int(abs(area / 2.0))
+
+# %%
 ########################################################
 ### Set config path for the project and path to human labels
 config_path = '/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
@@ -23,6 +37,7 @@ project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_model
 human_labels_filepath ='/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
 df_human = pd.read_hdf(human_labels_filepath)
 df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
+
 
 ########################################################
 ### Plot a selected image
@@ -63,11 +78,17 @@ plt.scatter(hull_pts[:,0],
             hull_pts[:,1],
             color='r',s=50)
 
-########################################################
+
+######################################################
 # plot scalebar
 area_chull = PolyArea(hull_pts[:,0],
                       hull_pts[:,1])
 scalebar_length = np.sqrt(area_chull)
+
+scalebar_length2 = np.sqrt(polygonArea(hull_pts[:,0],
+                                       hull_pts[:,1]))
+
+
 
 x_origin = 50
 y_origin = 50
@@ -75,4 +96,13 @@ x_bar = [x_origin, x_origin + scalebar_length]# repmat
 y_bar = [y_origin]*2
 plt.plot(x_bar,y_bar,
          color='r', linewidth=4)
+
+x_origin = 50
+y_origin = 100
+x_bar = [x_origin, x_origin + scalebar_length2]# repmat
+y_bar = [y_origin]*2
+plt.plot(x_bar,y_bar,
+         color='b', linewidth=4)
+
+plt.show()
 # %%
