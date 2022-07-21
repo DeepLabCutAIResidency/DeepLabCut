@@ -100,7 +100,7 @@ for shuffle in list_shuffle_numbers: #range(1,NUM_SHUFFLES+1):
         df_llk_test_only = df_model_test_only.drop(labels=['x','y'],axis=1,level=1)
         df_results = pd.concat([df_distance_test_only,df_llk_test_only],axis=1).sort_index(level=0,axis=1)
 
-# pdb.set_trace() 
+pdb.set_trace() 
 ##############################################################
 # Mean and sigma per bodypart
 df_summary_per_bodypart = df_results.describe()
