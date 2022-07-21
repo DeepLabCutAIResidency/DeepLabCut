@@ -6,6 +6,9 @@ This script generates a set of train config files (pose_config.yaml files) for a
 - The next 11 models use the same data augmentation settings as the baseline, except for one data augmentation method
 - This script also copies the test config file from the 'parent' project to all the sub-projects for each model
 
+Example usage (from DeepLabCut directory):
+     python deeplabcut/data_augm_pipeline_scripts/data_augm_generate_train_cfg_files.py  '/media/data/stinkbugs-DLC-2022-07-15-SMALL/config.yaml' 'data_augm' 'deeplabcut/data_augm_pipeline_scripts/baseline.yaml' --train_iteration=1
+
 Contributors: Sofia, Jonas, Sabrina
 """
 
@@ -15,7 +18,8 @@ from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_training_dataset
 import re
 import argparse
-import pdb
+import yaml
+# import pdb
 
 def create_parameters_dict():
     ##################################################################
@@ -100,6 +104,10 @@ def create_parameters_dict():
     parameters_dict["elastic_transform"] = {False: {'elastic_transform': False},
                                             True: {'elastic_transform': True}}
 
+    ### Gaussian noise
+    parameters_dict['gaussian_noise'] = {False: {'gaussian_noise': False},
+                                        True: {'gaussian_noise': True}}                                         
+
     ### Cloudy weather
     parameters_dict['cloudy'] = {False: {'clouds': False,
                                          'fog': False,
@@ -109,9 +117,9 @@ def create_parameters_dict():
                                          'rain': True}}
     ### Snowy weather
     parameters_dict['snowy'] = {False: {'snow': False,
-                                         'snow_flakes': False},
+                                        'snow_flakes': False},
                                 True: {'snow': True,
-                                         'snow_flakes': True}}
+                                        'snow_flakes': True}}
 
 
     return parameters_dict                                    
@@ -120,17 +128,52 @@ def create_parameters_dict():
 #############################################
 if __name__ == "__main__":
 
-    ##########################################################
-    ### Set config path of project with labelled data
+    ##############################################################
+    ## Parse command line input parameters
     # (we assume create_training_dataset has already been run)
-    config_path = sys.argv[1] #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
-
+    parser = argparse.ArgumentParser()
+    # required
+    parser.add_argument("config_path", #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+                        type=str,
+                        help="path to config.yaml file [required]")
+    parser.add_argument("subdir_prefix_str", 
+                        type=str,
+                        help="prefix common to all subdirectories to train [required]")
+    parser.add_argument("baseline_yaml_file_path", 
+                        type=str,
+                        default='',
+                        help="path to file that defines the data augmentation baseline [required]")                       
+    # optional
+    parser.add_argument('-l',"--list_data_augm_idcs_to_flip", 
+                        type=int,
+                        nargs='+',
+                        default=[], #-----------------
+                        help="List of indices of data augmentation methods (as listed in baseline yaml file) to inspect effect of.\
+                              If no list is provided, the script generates a train config with every method 'flipped' \
+                              wrt the baseline [optional]")
+    parser.add_argument("--training_set_index", 
+                        type=int,
+                        default=0,
+                        help="Integer specifying which TrainingsetFraction to use. Note that TrainingFraction is a list in config.yaml.[optional]")
+    parser.add_argument("--train_iteration", 
+                        type=int,
+                        default=0, # default is 0, but in stinkbug is 1. can this be extracted?
+                        help="iteration number in terms of frames extraction and retraining workflow [optional]")
+    args = parser.parse_args()
+    
+    ##########################################################
+    ### Extract required input params
+    config_path = args.config_path
     # each model subfolder is named with the format: <modelprefix_pre>_<id>_<str_id>
-    modelprefix_pre = sys.argv[2] #"data_augm"
+    modelprefix_pre = args.subdir_prefix_str #"data_augm"
+    baseline_yaml_file_path = args.baseline_yaml_file_path
+
+    ### Optional params
+    list_idcs_to_flip_from_baseline = args.list_data_augm_idcs_to_flip
 
     # Other params
-    TRAINING_SET_INDEX=0 # default;
-    TRAIN_ITERATION=1 # iteration in terms of frames extraction; default is 0. can this be extracted?
+    TRAINING_SET_INDEX = args.training_set_index # default;
+    TRAIN_ITERATION = args.train_iteration # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
     ##########################################################
     ### Get config as dict and associated paths
@@ -162,31 +205,25 @@ if __name__ == "__main__":
         list_base_test_pose_config_file_paths.append(base_test_pose_config_file_path_TEMP)
 
     ###############################################################
-    ## Create params dict
+    ## Create params dict -----potentially as a yaml file?
     parameters_dict = create_parameters_dict()
 
     ############################################################################
     ## Define baseline
-    baseline = {'crop':             True, #----check
-                'rotation':         True,
-                'scale':            True,
-                'mirror':           False,
-                'contrast':         True,
-                'motion_blur':      True,
-                'convolution':      False,
-                'grayscale':        False,
-                'covering':         True,
-                'elastic_transform': True,
-                'gaussian_noise':   False,
-                'cloudy':           False,
-                'snowy':            False}
+    with open(args.baseline_yaml_file_path,'r') as yaml_file:
+        baseline = yaml.safe_load(yaml_file)
+    list_baseline_keys = list(baseline.keys())
+
 
     #################################################
     ## Create list of strings identifying each model
-    list_of_data_augm_models_strs = ['baseline']
-    for ky in baseline.keys() :
-        list_of_data_augm_models_strs.append(ky) #'wo_' + ky)
+    # if required: consider only specific data augmentation methods
+    if bool(list_idcs_to_flip_from_baseline):
+        list_baseline_keys = [list_baseline_keys[i] for i in list_idcs_to_flip_from_baseline]
 
+    list_of_data_augm_models_strs = ['baseline']
+    for ky in list_baseline_keys: #baseline.keys() :
+        list_of_data_augm_models_strs.append(ky) #'wo_' + ky)
 
     #########################################
     ## Loop to train each model
@@ -240,7 +277,7 @@ if __name__ == "__main__":
         # initialise dict with gral params
         edits_dict = dict()
         edits_dict.update(parameters_dict['general'])
-        for ky in baseline.keys():
+        for ky in list_baseline_keys: #baseline.keys():
             if daug_str == ky:
                 # Get params that correspond to the opposite state of the method daug_str in the baseline
                 d_temp = parameters_dict[ky][not baseline[ky]]
