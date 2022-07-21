@@ -1,0 +1,14 @@
+# Baseline data augmentation methods
+crop:             true #----check
+rotation:         true
+scale:            true
+mirror:           false
+contrast:         true
+motion_blur:      true
+convolution:      false
+grayscale:        false
+covering:         true
+elastic_transform: true
+gaussian_noise:   false
+cloudy:           false
+snowy:            false
