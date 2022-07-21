@@ -74,6 +74,16 @@ class ImgaugPoseDataset(BasePoseDataset):
                 cfg.get("motion_blur_params", {"k": 7, "angle": (-90, 90)})
             )
 
+        # add weather conditions 
+        # if wild_data = True: then set this parameters --> True (test?)
+        #else:
+        cfg["snow"] = cfg.get("snow", False)
+        cfg["clouds"] = cfg.get("clouds", False)
+        cfg["fog"] = cfg.get("fog", False)
+        cfg["snow_flakes"] = cfg.get("snow_flakes", False)
+        cfg["rain"] = cfg.get("rain", False)
+
+
         print("Batch Size is %d" % self.batch_size)
 
     def load_dataset(self):
@@ -192,6 +202,37 @@ class ImgaugPoseDataset(BasePoseDataset):
                 )
         if cfg.get("grayscale", False):
             pipeline.add(sometimes(iaa.Grayscale(alpha=(0.5, 1.0))))
+        
+        
+        #conditions to weather
+        if cfg["snow"]:
+            pipeline.add(sometimes(iaa.FastSnowyLandscape(lightness_threshold=140,lightness_multiplier=2.5 )))
+        if cfg["snow_flakes"]:
+            pipeline.add(sometimes(iaa.SnowflakesLayer(density=(0.005, 0.075),
+                density_uniformity=(0.3, 0.9),
+                flake_size=(0.2, 0.7), flake_size_uniformity=(0.4, 0.8),
+                angle=(-30, 30), speed=(0.007, 0.03), blur_sigma_fraction=(0.0001, 0.001))))
+        if cfg["fog"]:
+            pipeline.add(sometimes(iaa.Fog()))
+        if cfg["cloud"]: # the default one
+            pipeline.add(sometimes(iaa.CloudLayer(intensity_mean=(196, 255),
+                intensity_freq_exponent=(-2.5, -2.0),
+                intensity_coarse_scale=10,
+                alpha_min=0, #this parameter tiene un cambio grande
+                alpha_multiplier=(0.25, 0.75),
+                alpha_size_px_max=(2, 8),
+                alpha_freq_exponent=(-2.5, -2.0),
+                sparsity=(0.8, 1.0),
+                density_multiplier=(0.5, 1.0),)))
+        if cfg["rain"]:
+            pipeline.add(sometimes(iaa.RainLayer(density=(0.03, 0.14),
+            density_uniformity=(0.8, 1.0),
+            drop_size=(0.01, 0.02),
+            drop_size_uniformity=(0.2, 0.5),
+            angle=(-15, 15),
+            speed=(0.04, 0.20),
+            blur_sigma_fraction=(0.001, 0.001))))
+        ##
 
         def get_aug_param(cfg_value):
             if isinstance(cfg_value, dict):
