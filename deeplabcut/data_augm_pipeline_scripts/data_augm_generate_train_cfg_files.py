@@ -19,7 +19,6 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 import re
 import argparse
 import yaml
-# import pdb
 
 def create_parameters_dict():
     ##################################################################
@@ -187,9 +186,13 @@ if __name__ == "__main__":
     files_in_dataset_top_folder = os.listdir(dataset_top_folder)
     list_shuffle_numbers = []
     for file in files_in_dataset_top_folder:
-        if file.endswith(".mat"):
+        if file.endswith(".mat") and \
+            str(int(cfg['TrainingFraction'][TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
+
             shuffleNum = int(re.findall('[0-9]+',file)[-1])
             list_shuffle_numbers.append(shuffleNum)
+    # make list unique! (in case there are several training fractions)
+    list_shuffle_numbers = list(set(list_shuffle_numbers))
     list_shuffle_numbers.sort()
 
     # Get train and test pose config file paths from base project, for each shuffle
@@ -256,19 +259,19 @@ if __name__ == "__main__":
                                                     trainingsetindex=TRAINING_SET_INDEX, # default
                                                     modelprefix=model_prefix)
 
-            # copy test and train config from base project to this subdir
+            # make train and test directories for this subdir
             os.makedirs(str(os.path.dirname(one_train_pose_config_file_path))) # create parentdir 'train'
             os.makedirs(str(os.path.dirname(one_test_pose_config_file_path))) # create parentdir 'test'
 
+            # copy test and train config from base project to this subdir
             # copy base train config file
             shutil.copyfile(list_base_train_pose_config_file_paths[j],
-                            one_train_pose_config_file_path) 
-
+                                one_train_pose_config_file_path) 
             # copy base test config file
             shutil.copyfile(list_base_test_pose_config_file_paths[j],
-                            one_test_pose_config_file_path) 
+                                one_test_pose_config_file_path) 
 
-            # add to list
+           # add to list
             list_train_pose_config_path_per_shuffle.append(one_train_pose_config_file_path) 
             list_test_pose_config_path_per_shuffle.append(one_test_pose_config_file_path)
 
