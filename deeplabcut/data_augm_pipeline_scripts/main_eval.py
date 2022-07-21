@@ -28,25 +28,23 @@ TRAIN_ITERATION = 1
 SHUFFLE_ID = 0 # should match path in model_predictions_filepath----
 TRAINING_SET_INDEX = 0
 
+
 ##########################################
 # Read human labelled data (shuffle 1)
-pdb.set_trace()
 df_human = pd.read_hdf(human_labels_filepath)
 # Read predictions
 df_model = pd.read_hdf(model_predictions_filepath)
 
-pdb.set_trace()
 ##########################################
 # Compute error per keypoint and per sample in the test set 
 cfg = auxiliaryfunctions.read_config(config_path)
 project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_models_path = os.path.join(project_path, "dlc-models")
 training_datasets_path = os.path.join(project_path, "training-datasets")
-trainingsetfolder = auxiliaryfunctions.GetTrainingSetFolder(cfg)
-pdb.set_trace()
-TrainingFractions = cfg["TrainingFraction"]
+unaugmented_training_dataset_path = auxiliaryfunctions.GetTrainingSetFolder(cfg)
+
+list_training_fractions = cfg["TrainingFraction"]
 
 
-pdb.set_trace()
 ##############################################################
 ### Get list of shuffles for this model
 iteration_folder = os.path.join(training_datasets_path, 'iteration-' + str(TRAIN_ITERATION))
@@ -55,23 +53,23 @@ files_in_dataset_top_folder = os.listdir(dataset_top_folder)
 list_shuffle_numbers = []
 for file in files_in_dataset_top_folder:
         if file.endswith(".mat") and \
-        str(int(TrainingFractions[TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
+        str(int(list_training_fractions[TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
 
                 shuffleNum = int(re.findall('[0-9]+',file)[-1])
                 list_shuffle_numbers.append(shuffleNum)
 # make list unique! (in case there are several training fractions)
 list_shuffle_numbers = list(set(list_shuffle_numbers))
 list_shuffle_numbers.sort()
-pdb.set_trace()
 ##############################################################
 
 # Loop thru shuffles
 for shuffle in list_shuffle_numbers: #range(1,NUM_SHUFFLES+1):
-    # Loop thru train-fractions
-    for trainFraction in TrainingFractions:
-        # Get test indices
-        _, metadatafn = auxiliaryfunctions.GetDataandMetaDataFilenames(trainingsetfolder, 
-                                                                       trainFraction, shuffle, cfg)
+
+        # Get test indices for this shuffle
+        _, metadatafn = auxiliaryfunctions.GetDataandMetaDataFilenames(unaugmented_training_dataset_path, 
+                                                                       list_training_fractions[TRAINING_SET_INDEX], 
+                                                                       shuffle, 
+                                                                       cfg)
         _,_, testIndices, _ = auxiliaryfunctions.LoadMetadata(os.path.join(cfg["project_path"], 
                                                               metadatafn))
 
@@ -83,14 +81,15 @@ for shuffle in list_shuffle_numbers: #range(1,NUM_SHUFFLES+1):
         df_human_test_only = df_human_test_only.droplevel('scorer',axis=1)
         df_model_test_only = df_model_test_only.droplevel('scorer',axis=1)   
 
-        ### Compute deltas in x and y dir between human scorer and model prediction
+        ### Compute x and y error: deltas in x and y dir between human scorer and model prediction
         df_diff_test_only = df_human_test_only - df_model_test_only
-        # Drop llk for model predictions before computing distance
-        df_diff_test_only = df_diff_test_only.drop(labels='likelihood',axis=1,level=1)
+        
 
-        # Compute distance btw model and human
+        #### Compute distance btw model and human
         # - nrows = samples in test set
         # - ncols = bodyparts tracked
+        # Drop llk for model predictions before computing distance
+        df_diff_test_only = df_diff_test_only.drop(labels='likelihood',axis=1,level=1)
         df_distance_test_only = df_diff_test_only.pow(2).sum(level='bodyparts',axis=1,skipna=False).pow(0.5)
         # warning: recommends to use 'df_diff_test_only.pow(2).groupby(level='bodyparts',axis=1).sum(axis=1,skipna=False)' instead,
         # but that makes NaNs into 0s!
@@ -101,8 +100,8 @@ for shuffle in list_shuffle_numbers: #range(1,NUM_SHUFFLES+1):
         df_llk_test_only = df_model_test_only.drop(labels=['x','y'],axis=1,level=1)
         df_results = pd.concat([df_distance_test_only,df_llk_test_only],axis=1).sort_index(level=0,axis=1)
 
-
-# ------------------------
+# pdb.set_trace() 
+##############################################################
 # Mean and sigma per bodypart
 df_summary_per_bodypart = df_results.describe()
 print('----------------------')
@@ -137,7 +136,8 @@ for ax in np_axes_per_row:
         # Format y-axis label
         ax[i].yaxis.set_major_formatter(StrMethodFormatter('{x:,g}'))
         ax[i].tick_params(axis='x', rotation=0)
-#-----------------------------
+
+##############################################################
 # Mean and sigma across all bodyparts
 px_error_all_bodyparts_and_test_samples = np.nanmean(df_results.drop(labels='likelihood',axis=1,level=1)) # matches result for evaluate fn
 print('----------------------')
