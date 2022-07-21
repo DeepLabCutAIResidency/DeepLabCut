@@ -66,16 +66,20 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
     iteration_folder = os.path.join(training_datasets_path, 'iteration-' + str(train_iteration))
     dataset_top_folder = os.path.join(iteration_folder, os.listdir(iteration_folder)[0])
     files_in_dataset_top_folder = os.listdir(dataset_top_folder)
-    shuffle_numbers = []
+    list_shuffle_numbers = []
     for file in files_in_dataset_top_folder:
-        if file.endswith(".mat"):
+        if file.endswith(".mat") and \
+            str(int(cfg['TrainingFraction'][TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
+
             shuffleNum = int(re.findall('[0-9]+',file)[-1])
-            shuffle_numbers.append(shuffleNum)
-    shuffle_numbers.sort()
+            list_shuffle_numbers.append(shuffleNum)
+    # make list unique! (in case there are several training fractions)
+    list_shuffle_numbers = list(set(list_shuffle_numbers))
+    list_shuffle_numbers.sort()
 
     ##########################################################
     ### Train every shuffle for this model
-    for sh in shuffle_numbers:
+    for sh in list_shuffle_numbers:
         ## Initialise dict with additional edits to train config: initial weights if provided and optimizer
         train_edits_dict = {}
 
@@ -155,7 +159,7 @@ if __name__ == "__main__":
                         type=str,
                         default='',
                         help="path to file that sets the optimizer parameters. If none is passed, Adam parameters are used \
-                              (optimizer=Adam, batch_size=16, multi_step= [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]])\
+                              (optimizer=adam, batch_size=8, multi_step= [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]])\
                               [optional]")
 
     # Other  training params [otpional]
@@ -169,11 +173,11 @@ if __name__ == "__main__":
                         help="maximum number of snapshots to keep [optional]")
     parser.add_argument("--display_iters", 
                         type=int,
-                        default=10000,
+                        default=1000,
                         help="display average loss every N iterations [optional]")
     parser.add_argument("--max_iters", 
                         type=int,
-                        default=300000,
+                        default=200_000, # 300000
                         help="maximum number of training iterations [optional]")
     parser.add_argument("--save_iters", 
                         type=int,
