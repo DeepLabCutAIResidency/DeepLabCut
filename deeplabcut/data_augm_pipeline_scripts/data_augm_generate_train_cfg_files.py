@@ -33,7 +33,8 @@ def create_parameters_dict():
     parameters_dict['general'] = {'dataset_type': 'imgaug', # OJO! not all the following will be available?
                                     'batch_size': 1, # 128
                                     'apply_prob': 0.5,
-                                    'pre_resize': []} # Specify [width, height] if pre-resizing is desired
+                                    'pre_resize': [],
+                                    'net_type': 'resnet_50'} # Specify [width, height] if pre-resizing is desired
 
     ### Crop----is this applied if we select imgaug? I think so....
     parameters_dict['crop'] = {False: {'crop_by': 0.0,
