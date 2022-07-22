@@ -18,7 +18,7 @@ for img_path in images_path:
 motion_blur_param = {"k": 7, "angle": (-90, 90)}
 
 augmentation = [
-    iaa.GaussianBlur(sigma=(5,5))
+    iaa.GaussianBlur(sigma=(4,4))
     #iaa.Rotate(rotate=(-180,-180))
     #iaa.CoarseDropout(0.02, size_percent=0.3, per_channel=0.5),
     #iaa.ElasticTransformation(sigma=5),
