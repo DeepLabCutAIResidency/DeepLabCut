@@ -103,21 +103,7 @@ plt.plot(x_bar,y_bar,
          color='r', linewidth=4, linestyle=':')
 
 plt.show()
-# %%
-# covering
-augmentation = iaa.Sequential(([iaa.CoarseDropout(
-                           ),
-                       ]))
 
-augmented_images = augmentation(images=image)
-plt.imshow(augmented_images[:,:,::-1])
-plt.show()
-# %%
-import imgaug as ia
-images = np.array(
-    [ia.quokka(size=(64, 64)) for _ in range(32)],
-    dtype=np.uint8
-)
 
 # %%
 # cut
@@ -144,3 +130,5 @@ for i in cov:
     plt.show()
 
 
+
+# %%
