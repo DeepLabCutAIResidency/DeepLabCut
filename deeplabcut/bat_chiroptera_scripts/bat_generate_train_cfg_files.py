@@ -2,7 +2,7 @@
 This script generates a set of train config files (pose_config.yaml files) for a bat study
 
 Example usage (from DeepLabCut directory):
-     python deeplabcut/data_augm_pipeline_scripts/data_augm_generate_train_cfg_files.py  '/media/data/stinkbugs-DLC-2022-07-15-SMALL/config.yaml' 'data_augm' 'deeplabcut/data_augm_pipeline_scripts/baseline.yaml' --train_iteration=1
+     python deeplabcut/data_augm_pipeline_scripts/data_augm_generate_train_cfg_files.py  '/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-07-19/config.yaml' 'data_augm' 'deeplabcut/data_augm_pipeline_scripts/baseline.yaml' --train_iteration=1
 
 Contributors: Sofia, Jonas, Sabrina
 """
