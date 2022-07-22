@@ -281,7 +281,7 @@ if __name__ == "__main__":
         # initialise dict with gral params
         edits_dict = dict()
         edits_dict.update(parameters_dict['general'])
-        for ky in list_baseline_keys: #baseline.keys():
+        for ky in baseline.keys(): # list_baseline_keys: #
             if daug_str == ky:
                 # Get params that correspond to the opposite state of the method daug_str in the baseline
                 d_temp = parameters_dict[ky][not baseline[ky]]
