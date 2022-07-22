@@ -1,4 +1,4 @@
-# 
+# %%
 import sys
 import os
 import pandas as pd
@@ -10,7 +10,7 @@ import re
 # Import 'local' deeplabcut ---- use relative path instead?
 import deeplabcut
 from deeplabcut.utils import auxiliaryfunctions
-import pdb
+
 
 ##########################################
 # Read files from evaluated network
@@ -28,7 +28,7 @@ TRAIN_ITERATION = 1
 SHUFFLE_ID = 0 # should match path in model_predictions_filepath----
 TRAINING_SET_INDEX = 0
 
-
+# %%
 ##########################################
 # Read human labelled data (shuffle 1)
 df_human = pd.read_hdf(human_labels_filepath)
@@ -44,7 +44,7 @@ unaugmented_training_dataset_path = auxiliaryfunctions.GetTrainingSetFolder(cfg)
 
 list_training_fractions = cfg["TrainingFraction"]
 
-
+# %%
 ##############################################################
 ### Get list of shuffles for this model
 iteration_folder = os.path.join(training_datasets_path, 'iteration-' + str(TRAIN_ITERATION))
@@ -99,8 +99,20 @@ for shuffle in list_shuffle_numbers: #range(1,NUM_SHUFFLES+1):
         ## Combine w Likelihood
         df_llk_test_only = df_model_test_only.drop(labels=['x','y'],axis=1,level=1)
         df_results = pd.concat([df_distance_test_only,df_llk_test_only],axis=1).sort_index(level=0,axis=1)
+# %%
+np_axes_per_row = df_results.drop(labels='likelihood',axis=1,level=1).droplevel(level=1,axis=1)
+thresh = 1
+all = 0
+bdpts = list(np_axes_per_row.columns.values)
+for bdpt in bdpts:
+        val_per_bdpt = list(np_axes_per_row[bdpt])
 
-pdb.set_trace() 
+        count = np_axes_per_row[bdpt][np_axes_per_row[bdpt] > thresh].count()
+        print('The number of keypoint above  ' +str( thresh) + ' is ' + str(count) )#+ ' in ' + str(len(val_per_bdpt)))
+        all += count
+
+print('The total number of keypoint above  ' +str( thresh) + ' is ' + str(all))
+# %%
 ##############################################################
 # Mean and sigma per bodypart
 df_summary_per_bodypart = df_results.describe()
@@ -109,6 +121,7 @@ print('Pixel error per bodypart:')
 print(df_summary_per_bodypart)
 
 
+# %%
 # Plot histogram per bodypart
 # https://mode.com/example-gallery/python_histogram/
 # drop 'distance' level column before plotting
@@ -136,7 +149,7 @@ for ax in np_axes_per_row:
         # Format y-axis label
         ax[i].yaxis.set_major_formatter(StrMethodFormatter('{x:,g}'))
         ax[i].tick_params(axis='x', rotation=0)
-
+# %%
 ##############################################################
 # Mean and sigma across all bodyparts
 px_error_all_bodyparts_and_test_samples = np.nanmean(df_results.drop(labels='likelihood',axis=1,level=1)) # matches result for evaluate fn
@@ -144,3 +157,4 @@ print('----------------------')
 print('Pixel error all bodyparts and test samples:')
 print(px_error_all_bodyparts_and_test_samples)
 print('----------------------')
+# %%
