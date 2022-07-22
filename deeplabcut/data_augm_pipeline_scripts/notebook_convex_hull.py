@@ -76,3 +76,34 @@ y_bar = [y_origin]*2
 plt.plot(x_bar,y_bar,
          color='r', linewidth=4)
 # %%
+# 
+Y = int(np.min(y1))
+H = int(np.max(y1))
+X = int(np.min(x1))
+W = int(np.max(x1))
+cropped_image = image[Y:H,X:W]
+print([X,Y,W,H])
+plt.imshow(cropped_image)
+# %%
+img1 = cv2.resize(image,(800,600))
+img2 = cv2.resize(cropped_image,(800,600))
+
+blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
+plt.imshow(blended)
+# %%
+from skimage.filters import gaussian
+
+def image_copy_paste(img, paste_img, alpha, blend=True, sigma=1):
+    if alpha is not None:
+        if blend:
+            alpha = gaussian(alpha, sigma=sigma, preserve_range=True)
+
+        img_dtype = img.dtype
+        alpha = alpha[..., None]
+        img = paste_img * alpha + img * (1 - alpha)
+        img = img.astype(img_dtype)
+
+    return img
+
+plt.imshow(image_copy_paste(cropped_image,cropped_image, alpha =1))
+# %%
