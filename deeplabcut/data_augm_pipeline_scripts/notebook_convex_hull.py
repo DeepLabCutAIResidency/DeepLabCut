@@ -8,11 +8,6 @@ import os
 import cv2
 
 # %%
-def PolyArea(x,y): 
-    # https://en.wikipedia.org/wiki/Shoelace_formula
-    # ATT! Vertices need to be in clockwise/anticlockwise order!
-    return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
-
 def polygonArea(X, Y): 
     # X and Y are numpy arrays of size nrows=N, ncolumns=2
 
@@ -30,13 +25,13 @@ def polygonArea(X, Y):
 # %%
 ########################################################
 ### Set config path for the project and path to human labels
-config_path = '/media/data/Horses-Byron-2019-05-08/config.yaml'#'/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
+config_path = '/media/data/stinkbugs-DLC-2022-07-15_COVERING/config.yaml' #'/media/data/Horses-Byron-2019-05-08/config.yaml'#'/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
 cfg = auxiliaryfunctions.read_config(config_path)
 project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_models_path = os.path.join(project_path, "dlc-models")
 
 # ideally: next bit from params and config?----
-human_labels_filepath = \
-    '/media/data/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
+human_labels_filepath = '/media/data/stinkbugs-DLC-2022-07-15_COVERING/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5'#\
+    # '/media/data/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
     # '/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
 df_human = pd.read_hdf(human_labels_filepath)
 df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
@@ -44,7 +39,7 @@ df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
 
 ########################################################
 ### Plot a selected image
-image_row_idx = 250
+image_row_idx = 10 #250
 if type(df_human.index[image_row_idx]) is tuple:
     img_relative_path = os.path.join(*df_human.index[image_row_idx]) 
 elif type(df_human.index[image_row_idx]) is str: 
@@ -96,6 +91,7 @@ plt.scatter(hull_pts[:,0],
 scalebar_length = np.sqrt(polygonArea(hull_pts[:,0],
                                        hull_pts[:,1]))
 
+print(scalebar_length)
 # plot area as a square
 # origin_square = np.mean(hull_pts,axis=0) -\
 #                 np.array([0.5*scalebar_length, 0.5*scalebar_length])
@@ -132,35 +128,36 @@ plt.plot(x_bar,y_bar,
          color='r', linewidth=4, linestyle=':')
 
 plt.show()
+
 # %%
-# 
-Y = int(np.min(y1))
-H = int(np.max(y1))
-X = int(np.min(x1))
-W = int(np.max(x1))
-cropped_image = image[Y:H,X:W]
-print([X,Y,W,H])
-plt.imshow(cropped_image)
-# %%
-img1 = cv2.resize(image,(800,600))
-img2 = cv2.resize(cropped_image,(800,600))
+# # 
+# Y = int(np.min(y1))
+# H = int(np.max(y1))
+# X = int(np.min(x1))
+# W = int(np.max(x1))
+# cropped_image = image[Y:H,X:W]
+# print([X,Y,W,H])
+# plt.imshow(cropped_image)
+# # %%
+# img1 = cv2.resize(image,(800,600))
+# img2 = cv2.resize(cropped_image,(800,600))
 
-blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
-plt.imshow(blended)
-# %%
-from skimage.filters import gaussian
+# blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
+# plt.imshow(blended)
+# # %%
+# from skimage.filters import gaussian
 
-def image_copy_paste(img, paste_img, alpha, blend=True, sigma=1):
-    if alpha is not None:
-        if blend:
-            alpha = gaussian(alpha, sigma=sigma, preserve_range=True)
+# def image_copy_paste(img, paste_img, alpha, blend=True, sigma=1):
+#     if alpha is not None:
+#         if blend:
+#             alpha = gaussian(alpha, sigma=sigma, preserve_range=True)
 
-        img_dtype = img.dtype
-        alpha = alpha[..., None]
-        img = paste_img * alpha + img * (1 - alpha)
-        img = img.astype(img_dtype)
+#         img_dtype = img.dtype
+#         alpha = alpha[..., None]
+#         img = paste_img * alpha + img * (1 - alpha)
+#         img = img.astype(img_dtype)
 
-    return img
+#     return img
 
-plt.imshow(image_copy_paste(cropped_image,cropped_image, alpha =1))
-# %%
+# plt.imshow(image_copy_paste(cropped_image,cropped_image, alpha =1))
+# # %%
