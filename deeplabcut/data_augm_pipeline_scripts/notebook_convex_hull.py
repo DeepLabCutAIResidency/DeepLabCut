@@ -7,27 +7,48 @@ from deeplabcut.utils import auxiliaryfunctions
 import os
 import cv2
 
-
+# %%
 def PolyArea(x,y): 
     # https://en.wikipedia.org/wiki/Shoelace_formula
+    # ATT! Vertices need to be in clockwise/anticlockwise order!
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
+def polygonArea(X, Y): 
+    # X and Y are numpy arrays of size nrows=N, ncolumns=2
 
+    n = X.shape[0]
+    # Initialize area
+    area = 0.0
+    # Calculate value of shoelace formula
+    j = n - 1
+    for i in range(0,n):
+        area += (X[j] + X[i]) * (Y[j] - Y[i])
+        j = i   # j is previous vertex to i
+    # Return absolute value
+    return int(abs(area / 2.0))
+
+# %%
 ########################################################
 ### Set config path for the project and path to human labels
-config_path = '/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
+config_path = '/media/data/Horses-Byron-2019-05-08/config.yaml'#'/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
 cfg = auxiliaryfunctions.read_config(config_path)
 project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_models_path = os.path.join(project_path, "dlc-models")
 
 # ideally: next bit from params and config?----
-human_labels_filepath ='/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
+human_labels_filepath = \
+    '/media/data/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
+    # '/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
 df_human = pd.read_hdf(human_labels_filepath)
 df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
 
+
 ########################################################
 ### Plot a selected image
-image_row_idx = 50
-img_relative_path = os.path.join(*df_human.index[image_row_idx])
+image_row_idx = 250
+if type(df_human.index[image_row_idx]) is tuple:
+    img_relative_path = os.path.join(*df_human.index[image_row_idx]) 
+elif type(df_human.index[image_row_idx]) is str: 
+    img_relative_path = df_human.index[image_row_idx] 
 labeled_data_path = os.path.join(project_path, img_relative_path)
 
 image = cv2.imread(labeled_data_path)
@@ -51,8 +72,10 @@ plt.scatter(points[:,0],points[:,1])
 ########################################################
 ### Compute convex hull 
 hull = ConvexHull(points)
-hull_indices = np.unique(hull.simplices.flat)
-hull_pts = points[hull_indices, :]
+# hull_indices = np.unique(hull.simplices.flat)
+hull_pts = points[hull.vertices,:]#points[hull_indices, :]
+# for 2D, the hull vertices give the points in counter clockwise order
+
 
 # plot convex hull
 for simplex in hull.simplices:
@@ -63,18 +86,52 @@ plt.scatter(hull_pts[:,0],
             hull_pts[:,1],
             color='r',s=50)
 
-########################################################
-# plot scalebar
-area_chull = PolyArea(hull_pts[:,0],
-                      hull_pts[:,1])
-scalebar_length = np.sqrt(area_chull)
 
-x_origin = 50
-y_origin = 50
-x_bar = [x_origin, x_origin + scalebar_length]# repmat
-y_bar = [y_origin]*2
+######################################################
+# plot scalebar
+# area_chull = PolyArea(hull_pts[:,0],
+#                       hull_pts[:,1])
+# # scalebar_length = np.sqrt(area_chull)
+
+scalebar_length = np.sqrt(polygonArea(hull_pts[:,0],
+                                       hull_pts[:,1]))
+
+# plot area as a square
+# origin_square = np.mean(hull_pts,axis=0) -\
+#                 np.array([0.5*scalebar_length, 0.5*scalebar_length])
+# rectangle = plt.Rectangle(tuple(origin_square),
+#                           scalebar_length2,
+#                           scalebar_length2, 
+#                           fc='blue',ec="blue",
+#                           alpha=0.3)
+# plt.gca().add_patch(rectangle)
+
+# plot body scale estimate in x-axis
+x_origin = 0
+y_origin = image.shape[0] - 0.5
+x_bar = [x_origin,  x_origin + scalebar_length]
+y_bar = [y_origin]*2# repmat
 plt.plot(x_bar,y_bar,
          color='r', linewidth=4)
+
+# plot scale horiz
+x_origin = np.mean(hull_pts,axis=0)[0]
+y_origin = np.mean(hull_pts,axis=0)[1] - 0.5*scalebar_length
+x_bar = [x_origin]*2
+y_bar = [y_origin, y_origin + scalebar_length]
+
+plt.plot(x_bar,y_bar,
+         color='r', linewidth=4, linestyle=':')
+
+# plot scale vert
+x_origin = np.mean(hull_pts,axis=0)[0]  - 0.5*scalebar_length
+y_origin = np.mean(hull_pts,axis=0)[1] 
+x_bar = [x_origin, x_origin + scalebar_length]
+y_bar = [y_origin]*2
+plt.plot(x_bar,y_bar,
+         color='r', linewidth=4, linestyle=':')
+
+plt.show()
 # %%
 # 
 Y = int(np.min(y1))
