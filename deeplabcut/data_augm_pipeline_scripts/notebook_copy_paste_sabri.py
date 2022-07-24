@@ -155,8 +155,9 @@ plt.scatter(points_random[:,0],points_random[:,1],s=15)
 # loop in images
 
 number_of_bdpts = len(list(df_human.droplevel(level=1,axis=1).columns.values))/2
+number_label_frames = df_human.shape[0]
+lts_frames = np.arange(151,number_label_frames,3)
 
-lts_frames = np.arange(151,240,2)
 for i in lts_frames:
     if type(df_human.index[i]) is tuple:
         img_relative_path = os.path.join(*df_human.index[i]) 
@@ -177,6 +178,7 @@ for i in lts_frames:
     y1 = [x for x in y if str(x) != 'nan']
 
     if len(x1) == number_of_bdpts and len(y1) == number_of_bdpts :
+        #or maybe the 90% of the bdpts???
 
         fig = plt.figure(figsize=(10,10))
         points = np.array([x1,y1])
