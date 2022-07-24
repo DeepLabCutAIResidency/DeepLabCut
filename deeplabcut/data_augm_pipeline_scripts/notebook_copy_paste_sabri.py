@@ -48,7 +48,6 @@ plt.imshow(image)
 
 ########################################################
 ### Get keypoints for this image
-# df_human_wo_nan = df_human.dropna(axis=0).reset_index(drop=True) ----review! why it didnt work?
 lts = list(df_human.iloc[image_row_idx,:])
 x = lts[0::2]
 y = lts[1::2]
@@ -63,7 +62,6 @@ plt.scatter(points[:,0],points[:,1])
 ########################################################
 ### Compute convex hull 
 hull = ConvexHull(points)
-# hull_indices = np.unique(hull.simplices.flat)
 hull_pts = points[hull.vertices,:]#points[hull_indices, :]
 # for 2D, the hull vertices give the points in counter clockwise order
 
@@ -82,9 +80,16 @@ Ymax = int(np.max(y1))
 Xmin = int(np.min(x1))
 Xmax = int(np.max(x1))
 cropped_image = image[Ymin:Ymax,Xmin:Xmax]
-# plt.imshow(cropped_image)
+# bdpts from crop image
+x_new = [x - Xmin for x in x1]
+y_new = [ y - Ymin for y in y1]
 
+points_new = np.array([x_new,y_new])
+points_new = points_new.T
+#plt.imshow(cropped_image)
+#plt.scatter(points_new[:,0],points_new[:,1])
 
+# %%
 ###########################
 # Select region in image and replace pixels
 image_w_replace = image
@@ -94,13 +99,6 @@ x_top_left_crop = min(int(random.random()*image.shape[1]),
 y_top_left_crop = min(int(random.random()*image.shape[0]),
                         image.shape[0] - cropped_image.shape[0])
 
-
-# image2 = image
-# x_offset = random.randint(0, image2.shape[1])
-# y_offset = random.randint(0, image2.shape[0])
-
-# x_end = x_offset + cropped_image.shape[1] # att! This could be beyond boundaries of the image
-# y_end = y_offset + cropped_image.shape[0]
 
 image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
                 x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
@@ -114,3 +112,19 @@ plt.imshow(image_w_replace)
 
 
 # %%
+# final image
+fig = plt.figure(figsize=(10,12))
+x_random = [x + x_top_left_crop for x in x_new]
+y_random = [ y + y_top_left_crop for y in y_new]
+
+points_random = np.array([x_random,y_random])
+points_random = points_random.T
+plt.imshow(image_w_replace)
+plt.scatter(points[:,0],points[:,1],s=15)
+plt.scatter(points_random[:,0],points_random[:,1],s=15)
+# %%
+
+
+
+
+
