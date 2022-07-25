@@ -8,7 +8,7 @@ train_cfg_path = \
     '/train/pose_cfg.yaml'
 
 
-train_cfg = read_config(train_cfg_path)
+# train_cfg = read_config(train_cfg_path)
 
 edit_config(train_cfg_path,
             {'fliplr': True,
