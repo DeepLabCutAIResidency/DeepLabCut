@@ -52,7 +52,6 @@ plt.imshow(image)
 
 ########################################################
 ### Get keypoints for this image
-# df_human_wo_nan = df_human.dropna(axis=0).reset_index(drop=True) ----review! why it didnt work?
 lts = list(df_human.iloc[image_row_idx,:])
 x = lts[0::2]
 y = lts[1::2]
@@ -67,7 +66,7 @@ plt.scatter(points[:,0],points[:,1])
 ########################################################
 ### Compute convex hull 
 hull = ConvexHull(points)
-hull_pts = points[hull.vertices,:]
+hull_pts = points[hull.vertices,:]#points[hull_indices, :]
 # for 2D, the hull vertices give the points in counter clockwise order
 
 # plot convex hull
@@ -84,18 +83,48 @@ Ymax = int(np.max(y1))
 Xmin = int(np.min(x1))
 Xmax = int(np.max(x1))
 cropped_image = image[Ymin:Ymax,Xmin:Xmax]
+# bdpts from crop image
+x_new = [x - Xmin for x in x1]
+y_new = [ y - Ymin for y in y1]
+
+points_new = np.array([x_new,y_new])
+points_new = points_new.T
+#plt.imshow(cropped_image)
+#plt.scatter(points_new[:,0],points_new[:,1])
 
 # plt.imshow(cropped_image)
 
 ###########################
 # Select crop region in original image and replace pixels with crop
 image_w_replace = image
+# add no overlap!!!
+x_top_left_crop = min(int(random.random()*image.shape[1]),image.shape[1] - cropped_image.shape[1])
+y_top_left_crop = min(int(random.random()*image.shape[0]),image.shape[0] - cropped_image.shape[0])
 
-x_top_left_crop = min(int(random.random()*image.shape[1]),
-                        image.shape[1] - cropped_image.shape[1]) # constrained so that crop stays within image!
-y_top_left_crop = min(int(random.random()*image.shape[0]),
+square_orig_x = np.arange(Ymin,Ymax)
+square_orig_y =np.arange(Xmin,Xmax)
+square_crop_x = np.arange(y_top_left_crop,y_top_left_crop+cropped_image.shape[0])
+square_crop_y = np.arange(x_top_left_crop,x_top_left_crop+cropped_image.shape[1])
+while y_top_left_crop+cropped_image.shape[0] in square_orig_x:
+    y_top_left_crop = min(int(random.random()*image.shape[0]),
                         image.shape[0] - cropped_image.shape[0])
+    print(y_top_left_crop)
 
+while x_top_left_crop+cropped_image.shape[1] in square_orig_y:
+    x_top_left_crop = min(int(random.random()*image.shape[1]),
+                        image.shape[1] - cropped_image.shape[1])
+    print(x_top_left_crop)
+while y_top_left_crop in square_orig_x:
+    y_top_left_crop = min(int(random.random()*image.shape[0]),
+                        image.shape[0] - cropped_image.shape[0])
+    print(y_top_left_crop)
+
+while x_top_left_crop in square_orig_y:
+    x_top_left_crop = min(int(random.random()*image.shape[1]),
+                        image.shape[1] - cropped_image.shape[1])
+    print(x_top_left_crop)
+
+# %%
 
 image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
                 x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
@@ -106,5 +135,124 @@ plt.imshow(image_w_replace)
 # Blend crop with back
 # blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
 # plt.imshow(blended)
+
+# %%
+
+
+# %%
+# final image
+fig = plt.figure(figsize=(10,12))
+x_random = [x + x_top_left_crop for x in x_new]
+y_random = [ y + y_top_left_crop for y in y_new]
+
+points_random = np.array([x_random,y_random])
+points_random = points_random.T
+plt.imshow(image_w_replace)
+plt.scatter(points[:,0],points[:,1],s=15)
+plt.scatter(points_random[:,0],points_random[:,1],s=15)
+
+
+
+
+
+# %%
+# loop in images
+
+number_of_bdpts = len(list(df_human.droplevel(level=1,axis=1).columns.values))/2
+number_label_frames = df_human.shape[0]
+lts_frames = np.arange(151,number_label_frames,3)
+
+for i in lts_frames:
+    if type(df_human.index[i]) is tuple:
+        img_relative_path = os.path.join(*df_human.index[i]) 
+    elif type(df_human.index[i]) is str: 
+        img_relative_path = df_human.index[i] 
+    labeled_data_path = os.path.join(project_path, img_relative_path)
+
+    image = cv2.imread(labeled_data_path)
+    
+    #plt.imshow(image)
+
+    ########################################################
+    ### Get keypoints for this image
+    lts = list(df_human.iloc[i,:])
+    x = lts[0::2]
+    y = lts[1::2]
+    x1 = [x for x in x if str(x) != 'nan'] # remove nan
+    y1 = [x for x in y if str(x) != 'nan']
+
+    if len(x1) == number_of_bdpts and len(y1) == number_of_bdpts :
+        #or maybe the 90% of the bdpts???
+
+        fig = plt.figure(figsize=(10,10))
+        points = np.array([x1,y1])
+        points = points.T
+        #plt.scatter(points[:,0],points[:,1])
+
+        ########################################################
+        ### Compute convex hull 
+        hull = ConvexHull(points)
+        hull_pts = points[hull.vertices,:]#points[hull_indices, :]
+        # for 2D, the hull vertices give the points in counter clockwise order
+
+
+        # plot convex hull
+        #for simplex in hull.simplices:
+        #    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+
+        # plot vertices
+        #plt.scatter(hull_pts[:,0], hull_pts[:,1], color='r',s=50)
+
+        #######################################
+        # Compute bounding box based on max min coords of keypoints
+        Ymin = int(np.min(y1))
+        Ymax = int(np.max(y1))
+        Xmin = int(np.min(x1))
+        Xmax = int(np.max(x1))
+        cropped_image = image[Ymin:Ymax,Xmin:Xmax]
+        # bdpts from crop image
+        x_new = [x - Xmin for x in x1]
+        y_new = [ y - Ymin for y in y1]
+
+        points_new = np.array([x_new,y_new])
+        points_new = points_new.T
+        #plt.imshow(cropped_image)
+        #plt.scatter(points_new[:,0],points_new[:,1])
+        # Select region in image and replace pixels
+        image_w_replace = image
+        # add no overlap!!!
+        x_top_left_crop = min(int(random.random()*image.shape[1]),
+                                image.shape[1] - cropped_image.shape[1])
+        y_top_left_crop = min(int(random.random()*image.shape[0]),
+                                image.shape[0] - cropped_image.shape[0])
+        square_orig_x = np.arange(Ymin,Ymax)
+        square_orig_y =np.arange(Xmin,Xmax)
+        while y_top_left_crop+cropped_image.shape[0] in square_orig_x or  x_top_left_crop+cropped_image.shape[1] in square_orig_y or y_top_left_crop in square_orig_x or  x_top_left_crop in square_orig_y:
+            y_top_left_crop = min(int(random.random()*image.shape[0]),
+                                image.shape[0] - cropped_image.shape[0])
+            x_top_left_crop = min(int(random.random()*image.shape[1]),
+                                image.shape[1] - cropped_image.shape[1])
+
+        
+        image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
+                        x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
+                        0:] = cropped_image
+
+        ###########################################
+        # Blend crop with back
+        # blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
+        # plt.imshow(blended)
+
+        # final image
+        fig = plt.figure(figsize=(10,12))
+        x_random = [x + x_top_left_crop for x in x_new]
+        y_random = [ y + y_top_left_crop for y in y_new]
+
+        points_random = np.array([x_random,y_random])
+        points_random = points_random.T
+        plt.imshow(image_w_replace)
+        plt.scatter(points[:,0],points[:,1],s=15)
+        plt.scatter(points_random[:,0],points_random[:,1],s=15)
+
 
 

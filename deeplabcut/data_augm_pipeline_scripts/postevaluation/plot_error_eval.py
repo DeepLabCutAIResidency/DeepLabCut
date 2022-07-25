@@ -33,6 +33,7 @@ for modelprefix in modelprefixes:
 sns.set_context("paper", rc={"font.size":12,"axes.titlesize":16,"axes.labelsize":12})  
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 df = pd.DataFrame.from_dict(train_dict, orient='index')
 df.index.rename('Model', inplace=True)
 
@@ -63,3 +64,10 @@ plt.savefig('test.png',dpi=500, bbox_inches='tight')
 plt.show()
 #plt.savefig('./test.png', dpi=500, bbox_inches='tight')
 # %%
+#NONPARAMETRIC TESTS  Compare one group to a hypothetical value (baseline)
+from scipy.stats import wilcoxon # The Wilcoxon signed-rank test tests the null hypothesis that two related paired samples come from the same distribution.
+#w, p_val = wilcoxon(x = dat_2D[1][1], y = dat_2D[1][2] )
+#print(p_val)
+#The Wilcoxon rank-sum test tests whether medians are significantly different while the two-sample Kolmogorov-Smirnov test tests whether distributions are different both groups.
+#from scipy import stats
+#stats.ks_2samp(data1, data2,)
