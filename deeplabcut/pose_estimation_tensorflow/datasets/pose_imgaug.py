@@ -22,7 +22,7 @@ import pickle
 import imgaug.augmenters as iaa
 import numpy as np
 import scipy.io as sio
-
+from deeplabcut.pose_estimation_tensorflow.datasets import augmentation
 from deeplabcut.utils.auxfun_videos import imread
 from deeplabcut.utils.conversioncode import robust_split_path
 from .factory import PoseDatasetFactory
@@ -172,6 +172,20 @@ class ImgaugPoseDataset(BasePoseDataset):
                 pipeline.add(sometimes(iaa.Fliplr(opt)))
             else:
                 pipeline.add(sometimes(iaa.Fliplr(0.5)))
+
+        if cfg.get("fliplr", False) and cfg.get("symmetric_pairs"):
+            opt = cfg.get("fliplr", False)
+            if type(opt) == int:
+                p = opt
+            else:
+                p = 0.5
+            pipeline.add(sometimes(
+                augmentation.KeypointFliplr(
+                    cfg["all_joints_names"],
+                    symmetric_pairs=cfg["symmetric_pairs"],
+                    p=p,
+                )
+            ))
 
         if cfg["rotation"] > 0:
             pipeline.add(
