@@ -1,3 +1,4 @@
+# %%
 import deeplabcut
 from deeplabcut.pose_estimation_tensorflow.config import load_config
 from deeplabcut.pose_estimation_tensorflow.datasets import Batch, PoseDatasetFactory
@@ -12,27 +13,12 @@ import imgaug as ia
 import imgaug.augmenters as iaa
 from imgaug.augmentables import Keypoint, KeypointsOnImage
 
-#######################################################
-backgrounds = np.random.randint(0, 256, size=(100, 128, 128, 3))
+from deeplabcut.data_augm_pipeline_scripts.copy_paste import CopyPaste
 
-def func_images(images, random_state, parents, hooks):
-    bg_ids = random_state.randint(0, len(backgrounds), size=(len(images),))
-    result = []
-    for image, bg_id in zip(images, bg_ids):
-        image_small = ia.imresize_single_image(image, (64, 64))
-        image_aug = np.copy(backgrounds[bg_id])
-        image_aug[32:-32, 32:-32, :] = image_small
-        result.append(image_aug)
-    return result
-    
-def func_heatmaps(heatmaps, random_state, parents, hooks):
-    return heatmaps
-    
-def func_keypoints(keypoints_on_images, random_state, parents, hooks):
-    return keypoints_on_images
 
+# %%
 ############################################################
-config_path = '/media/data/trimice-dlc-2021-06-22/config.yaml' 
+config_path = '/media/data/trimice-dlc-2021-06-22_batchSize1/config.yaml' 
 SHUFFLE_ID=1
 TRAINING_SET_IDX=0
 MODEL_PREFIX=''
@@ -45,6 +31,8 @@ _,_ = deeplabcut.return_train_network_path(config_path,
 train_cfg = load_config(str(train_cfg_path)) # cfg = load_config(config_yaml)
 
 FLAG_PLOTTING = True
+
+# %%
 ################################################
 # Instantiate object from 'ImgaugPoseDataset' class (ok?)
 # in multi-animal: MAImgaugPoseDataset!!!
@@ -52,6 +40,7 @@ FLAG_PLOTTING = True
 # - batch size = 8
 dataset = PoseDatasetFactory.create(train_cfg)
 
+# %%
 ###################################################
 ### Define pipeline --- we will define a custom pipeline here! 
 # (in multi-animal property of MAImgaugPoseDataset class)            
@@ -61,18 +50,6 @@ dataset = PoseDatasetFactory.create(train_cfg)
 
 # to get pipeline defined for this dataset
 # pipeline = dataset.pipeline # Sequential...
-#####################################################################
-# Use a lambda fn to define a custom pipeline:--------------------------------------------------
-# Example 1: https://github.com/aleju/imgaug/issues/152 --using a lambda fn
-# Example 2: https://github.com/aleju/imgaug/issues/363 -- passing additional params to lambda
-# Example 3: https://github.com/aleju/imgaug/issues/156 -- passing stochastic params
-
-bg_augmenter = iaa.Lambda(func_images=func_images,
-                          func_heatmaps=func_heatmaps,
-                          func_keypoints=func_keypoints)
-
-pipeline = iaa.Sequential([iaa.Fliplr(0.5),
-                           bg_augmenter])
 
 ###########################################################
 # Use an augmentation class?
@@ -81,9 +58,13 @@ pipeline = iaa.Sequential([iaa.Fliplr(0.5),
 # pipeline.add(augmentation.KeypointAwareCropToFixedSize(*dataset.default_size, 
 #                                                        train_cfg.get("max_shift", 0.4), 
 #                                                        crop_sampling))
-#
+
 # class CropToFixedSize(meta.Augmenter):
 
+pipeline = iaa.Sequential(random_order=False)
+pipeline.add(CopyPaste())
+
+# %%
 ########################################################
 ### Get batch (from multi-animal pose_imgaug, 'next_batch)
 (batch_images, 
@@ -92,7 +73,22 @@ pipeline = iaa.Sequential([iaa.Fliplr(0.5),
     inds_visible,
      data_items) = dataset.get_batch()
 
-        
+# %%
+#### Plot original image if required
+# If you would like to check the *original* images, script for saving
+# the images with joints on:
+if FLAG_PLOTTING:
+    for i in range(dataset.batch_size):
+        joints = batch_joints[i]
+        kps = KeypointsOnImage([Keypoint(x=joint[0], y=joint[1]) for joint in joints],
+                                shape=batch_images[i].shape)
+        im = kps.draw_on_image(batch_images[i])
+        # save original
+        img_path = os.path.join(dataset.cfg["project_path"], str(i) + "_og.png")
+        imageio.imwrite(img_path, im)
+        print('Original image saved at: {}'.format(img_path))
+
+# %%        
 #########################################################################
 #### Scale batch
 ## Scale is sampled only once (per batch) to transform all of the images into same size.
@@ -101,14 +97,37 @@ scale = np.mean(target_size/dataset.default_size)
 augmentation.update_crop_size(dataset.pipeline, 
                               *target_size)
 
+# if FLAG_PLOTTING:
+#     for i in range(dataset.batch_size):
+#         joints = batch_joints[i]
+#         kps = KeypointsOnImage([Keypoint(x=joint[0], y=joint[1]) for joint in joints],
+#                                 shape=batch_images[i].shape)
+#         im = kps.draw_on_image(batch_images[i])
+#         # save original
+#         img_path = os.path.join(dataset.cfg["project_path"], str(i) + "_og_scale.png")
+#         imageio.imwrite(img_path, im)
+#         print('Original image saved at: {}'.format(img_path))                              
+
+# %%
 #########################################################################
 ### Transform batch
 (batch_images, 
- batch_joints) = dataset.pipeline(images=batch_images, 
-                                keypoints=batch_joints)
+ batch_joints) = pipeline(images=batch_images, 
+                          keypoints=batch_joints)
 
+if FLAG_PLOTTING:
+    for i in range(dataset.batch_size):
+        joints = batch_joints[i]
+        kps = KeypointsOnImage([Keypoint(x=joint[0], y=joint[1]) for joint in joints],
+                                shape=batch_images[i].shape)
+        im = kps.draw_on_image(batch_images[i])
+        # save original
+        img_path = os.path.join(dataset.cfg["project_path"], str(i) + "_transformed.png")
+        imageio.imwrite(img_path, im)
+        print('Transformed image saved at: {}'.format(img_path))     
+# %%
 #########################################################################
-## Discard keypoints whose coordinates lie outside the cropped image
+## Discard keypoints whose coordinates lie outside the cropped image ('joint_ids_valid')
 batch_images = np.asarray(batch_images)
 image_shape = batch_images.shape[1:3]
 batch_joints_valid = []
@@ -132,6 +151,7 @@ for joints, ids, visible in zip(batch_joints, joint_ids, inds_visible):
         start = end
     joint_ids_valid.append(temp)
 
+# %%
 #########################################################################          
 #### Plot if required
 # If you would like to check the augmented images, script for saving
@@ -142,8 +162,12 @@ if FLAG_PLOTTING:
         kps = KeypointsOnImage([Keypoint(x=joint[0], y=joint[1]) for joint in joints],
                                 shape=batch_images[i].shape)
         im = kps.draw_on_image(batch_images[i])
-        imageio.imwrite(os.path.join(dataset.cfg["project_path"], str(i) + ".png"), im)
+        # save modified
+        img_path = os.path.join(dataset.cfg["project_path"], str(i) + "_transformed2.png")
+        imageio.imwrite(img_path, im)
+        print('Transformed image saved at: {}'.format(img_path))  
 
+# %%
 #########################################################################
 ### Build dict of batch to return
 batch = {Batch.inputs: batch_images.astype(np.float64)}
