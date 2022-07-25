@@ -1,5 +1,4 @@
 import os
-from evaluate_all_shuffles import evaluate_all_shuffles
 import deeplabcut
 from deeplabcut.utils.auxiliaryfunctions import read_config
 import re
