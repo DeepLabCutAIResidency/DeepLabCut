@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-
 def pairwisedistances(DataCombined, scorer1, scorer2, pcutoff=-1, bodyparts=None):
     """Calculates the pairwise Euclidean distance metric over body parts vs. images"""
     mask = DataCombined[scorer2].xs("likelihood", level=1, axis=1) >= pcutoff

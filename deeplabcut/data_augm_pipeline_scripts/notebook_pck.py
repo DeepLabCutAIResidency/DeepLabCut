@@ -19,9 +19,21 @@ import deeplabcut
 from deeplabcut.utils import auxiliaryfunctions
 
 
+<<<<<<< Updated upstream
 #########################################
 # Input params
 config_path = '/media/data/stinkbugs-DLC-2022-07-15/config.yaml'#'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+=======
+##########################################
+# Read files from evaluated network
+human_labels_filepath ='/home/sabrina/Horses-Byron-2019-05-08/data_augm_00_baseline/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.csv' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
+model_predictions_filepath = '/home/sabrina/Horses-Byron-2019-05-08/data_augm_00_baseline/evaluation-results/iteration-0/HorsesMay8-trainset5shuffle0/DLC_resnet50_HorsesMay8shuffle0_200000-snapshot-200000.h5'
+# '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/evaluation-results/iteration-0/sabris-mouseJul6-trainset80shuffle1/DLC_resnet50_sabris-mouseJul6shuffle1_2-snapshot-2.h5'
+
+
+# Read config of trained network
+config_path = '/home/sabrina/Horses-Byron-2019-05-08/config.yaml'#'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+>>>>>>> Stashed changes
 # NUM_SHUFFLES=1 # this is an input to create_training_dataset but I think it is not saved anywhere
 
 
