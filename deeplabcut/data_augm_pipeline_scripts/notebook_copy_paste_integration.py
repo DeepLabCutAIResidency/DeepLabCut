@@ -13,24 +13,26 @@ import imgaug as ia
 import imgaug.augmenters as iaa
 from imgaug.augmentables import Keypoint, KeypointsOnImage
 
-#from deeplabcut.data_augm_pipeline_scripts.copy_paste import CopyPaste
+from deeplabcut.data_augm_pipeline_scripts.copy_paste import CopyPaste
 
 
 # %%
 ############################################################
-config_path = '/media/data/trimice-dlc-2021-06-22_batchSize1/config.yaml' 
+config_path = '/media/data/trimice-dlc-2021-06-22/config.yaml' 
 SHUFFLE_ID=1
 TRAINING_SET_IDX=0
 MODEL_PREFIX=''
+
+cfg = read_config(config_path)
 
 train_cfg_path,\
 _,_ = deeplabcut.return_train_network_path(config_path,
                                             shuffle=SHUFFLE_ID,
                                             trainingsetindex=TRAINING_SET_IDX, 
                                             modelprefix=MODEL_PREFIX)
-train_cfg = load_config(str(train_cfg_path)) # cfg = load_config(config_yaml)
+train_cfg = load_config(str(train_cfg_path)) # 
 
-FLAG_PLOTTING = True
+FLAG_PLOTTING = False
 
 # %%
 ################################################
@@ -62,17 +64,22 @@ dataset = PoseDatasetFactory.create(train_cfg)
 # class CropToFixedSize(meta.Augmenter):
 
 pipeline = iaa.Sequential(random_order=False)
-#pipeline.add(CopyPaste())
+pipeline.add(CopyPaste(cfg))
 
 # %%
 ########################################################
 ### Get batch (from multi-animal pose_imgaug, 'next_batch)
+# (batch_images, 
+#     joint_ids, 
+#     batch_joints, 
+#     inds_visible,
+#      data_items) = dataset.get_batch()
+batch_set = dataset.get_batch()
 (batch_images, 
     joint_ids, 
     batch_joints, 
     inds_visible,
-     data_items) = dataset.get_batch()
-
+     data_items) = batch_set
 # %%
 #### Plot original image if required
 # If you would like to check the *original* images, script for saving
@@ -114,6 +121,8 @@ augmentation.update_crop_size(dataset.pipeline,
 (batch_images, 
  batch_joints) = pipeline(images=batch_images, 
                           keypoints=batch_joints)
+# (batch_images, 
+#  batch_joints) = pipeline(*batch_set)
 
 if FLAG_PLOTTING:
     for i in range(dataset.batch_size):
