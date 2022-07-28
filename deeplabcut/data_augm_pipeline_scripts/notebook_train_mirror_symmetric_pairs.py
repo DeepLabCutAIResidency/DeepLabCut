@@ -1,17 +1,18 @@
 import deeplabcut
-from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
+from deeplabcut.utils.auxiliaryfunctions import edit_config
 
-SHUFFLE_ID=2
+SHUFFLE_ID=0
 train_cfg_path = \
 '/media/data/stinkbugs-DLC-2022-07-15_MIRROR/data_augm_02_mirror_symmetric/dlc-models/iteration-1/stinkbugsJul15-trainset80shuffle'+\
     str(SHUFFLE_ID)+\
-    '/train/pose_cfg.yaml'
+    '/train/pose_cfg.yaml' # should be original copy of the same shuffle in data_augm_01_mirror
 
 
 # train_cfg = read_config(train_cfg_path)
 
 edit_config(train_cfg_path,
-            {'fliplr': True,
+            {'fliplr': True, 
+            'mirror': False, #---- ATT mirror should be set  to false!
             'symmetric_pairs': [(0,12), 
                                   (1,13),
                                   (2,14),
