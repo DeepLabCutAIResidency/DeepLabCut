@@ -80,7 +80,7 @@ def crop_image(main_cfg,
 #         dict_overlap[i] = points2
 
 ######################################################
-class CopyPaste(iaa.meta.Augmenter):
+class CopyPaste(iaa.meta.Augmenter): #-----https://imgaug.readthedocs.io/en/latest/source/api_augmenters_blend.html#imgaug.augmenters.blend.BlendAlphaMask
     ############################################################################
     def __init__(self, 
                  config,#----n animals
