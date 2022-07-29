@@ -79,7 +79,7 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
     ##########################################################
     ### Train every shuffle for this model
     # pdb.set_trace()
-    for sh in [list_shuffle_numbers[0]]: #----------------TEMPORARY-Hack!!! To train only first shuffle!
+    for sh in list_shuffle_numbers: #[list_shuffle_numbers[0]]: #----------------TEMPORARY-Hack!!! To train only first shuffle!
         ## Initialise dict with additional edits to train config: initial weights if provided and optimizer
         train_edits_dict = {}
 
