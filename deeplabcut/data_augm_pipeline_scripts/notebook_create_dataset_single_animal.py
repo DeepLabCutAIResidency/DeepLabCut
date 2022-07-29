@@ -6,7 +6,7 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 
 ######################################################
 ### Set config path
-config_path = '/media/data/Horses-Byron-2019-05-08/config.yaml' 
+config_path = '/home/sofia/datasets/Horses-Byron-2019-05-08/config.yaml' 
 
 ############################################################
 ## Set other params
