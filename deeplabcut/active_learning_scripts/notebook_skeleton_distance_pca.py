@@ -11,13 +11,14 @@ from math import sqrt, erf
 import os
 import random
 import matplotlib.pyplot as plt
-from scipy.spatial import distance
+
 
 # from scipy.optimize import linear_sum_assignment
 # from scipy.spatial import cKDTree
-from scipy.spatial.distance import pdist #, cdist
+from scipy.spatial.distance import pdist, mahalanobis #, cdist
 # from scipy.special import softmax
 from scipy.stats import gaussian_kde, chi2
+
 
 import deeplabcut
 from deeplabcut.pose_estimation_tensorflow.config import load_config
@@ -34,10 +35,13 @@ train_data_file = \
 list_horseIDs_for_kde = [*range(15)]
 # select one row idx in labelled table,
 #  after removing frames with less than 90% of kpts to compute probability
-idx_sel_frame = 1000
+# idx_sel_frame = 1000
 
 # nan policy when computing mahalanobis distance
-nan_policy_mahalanobis =  'little' # default is 'little'
+# nan_policy_mahalanobis =  'little' # default is 'little'
+
+# mahalanobis
+chi2_percentile = 0.9
 
 # seed:
 random.seed(3)
@@ -46,12 +50,14 @@ random.seed(3)
 ######################################################
 ## Read labelled data 
 df_all_horses = pd.read_hdf(train_data_file)
-# try:
-#     # df.drop("single", level="individuals", axis=1, inplace=True) # for multi-animal
-#     df.drop("single", level="individuals", axis=1, inplace=True) # for multi-animal
-# except KeyError:
-#     pass
 
+# drop indiv-level if multi-animal
+try:
+    df_all_horses.drop("single", level="individuals", axis=1, inplace=True) # for multi-animal
+except KeyError:
+    pass
+
+# get n of bodyparts per animal
 n_bpts = len(df_all_horses.columns.get_level_values("bodyparts").unique())
 if n_bpts == 1:
     warnings.warn("There is only one keypoint; skipping calibration...")
@@ -60,7 +66,8 @@ if n_bpts == 1:
 # add Horse ID as index
 set_horses_ID_str = np.unique([v for (u,v,w) in df_all_horses.index])
 dict_horse_ID_str_to_int = {el:j for j,el in enumerate(set_horses_ID_str)}
-df_all_horses['framePath']=[os.path.join(*el) for el in df_all_horses.index] # keep frame path info
+# keep frame path info
+df_all_horses['framePath']=[os.path.join(*el) for el in df_all_horses.index] 
 df_all_horses.insert(0,'horseID',
                     [dict_horse_ID_str_to_int[v] for (u,v,w) in df_all_horses.index],
                     allow_duplicates=True)
@@ -103,8 +110,7 @@ for bdpts_arr,df in zip([bdpts_per_frame_XY_slc_horses, bdpts_per_frame_XY_other
 
 # %%
 #################################################################################
-## Select only frames in which almost all visible
-# Only keeps frames in which  more than 90% of the bodyparts are visible
+## Select only frames in which over 90% of kpts are visible
 bdpts_per_frame_XY_slc_horses_valid = bdpts_per_frame_XY_slc_horses[df_slc_horses['fraction_vis_kpts'] >= 0.9] # (4801, 22, 2)
 
 
@@ -117,7 +123,8 @@ plt.hist(df_slc_horses['fraction_vis_kpts'] ,
 plt.xlabel('fraction of visible keypoints')
 plt.xticks(np.arange(0.0,1.1,0.1))
 plt.ylabel('n frames (N = {})'.format(len(bdpts_per_frame_XY_slc_horses)))
-plt.vlines(np.median(df_slc_horses['fraction_vis_kpts'] ), 0, 200,
+plt.vlines(np.median(df_slc_horses['fraction_vis_kpts'] ), 
+          0, 0.65*len(bdpts_per_frame_XY_slc_horses),
           color='r',
           linestyle='--',
           label='median')
@@ -146,12 +153,12 @@ plt.show()
 
 # %%
 #########################################################
-## Compute pairwise distances between kpts
+## Compute pairwise distances between kpts -limbs lengths, replacing missing data with mean limb length
 # (n selected frames, nchoosek(22,2) )
 pairwise_sq_dists_per_frame= np.vstack([pdist(data, "sqeuclidean") \
                                      for data in bdpts_per_frame_XY_slc_horses_valid]) #(4801, 231) # for each frame, pass array of sorted keypoints # are these all in the same order? I guess so if data is 'sorted'
 # replace missing data with mean
-mu = np.nanmean(pairwise_sq_dists_per_frame, axis=0) # mean bone length over all frames
+mu = np.nanmean(pairwise_sq_dists_per_frame, axis=0) # mean limb length over all frames
 missing = np.isnan(pairwise_sq_dists_per_frame)
 pairwise_sq_dists_per_frame_no_nans = np.where(missing, mu, pairwise_sq_dists_per_frame)
 
@@ -232,7 +239,7 @@ pairwise_sq_dists_one_frame = np.asarray([pdist(arr, metric="sqeuclidean")
 
 d_mahal = np.zeros((pairwise_sq_dists_one_frame.shape[0],1))
 for i,d in enumerate(d_mahal):
-    d_mahal[i,:] = distance.mahalanobis(pairwise_sq_dists_one_frame[i,:],
+    d_mahal[i,:] = mahalanobis(pairwise_sq_dists_one_frame[i,:],
                                             kde_slc_horses.mean,
                                             kde_slc_horses._data_inv_cov) #inv_cov # kde_slc_horses._data_inv_cov
 
@@ -240,17 +247,40 @@ for i,d in enumerate(d_mahal):
 plt.plot(d_mahal)
 plt.ylim([0,100])
 plt.xlabel('frame ID')
-plt.ylabel('Mahalanobis distance (px)')
+plt.ylabel('Mahalanobis distance d (px)')
 
+# add percent point fn (percentiles, inverse of cdf: ppf(q, df, loc=0, scale=1))
+# d2 follows X**2 distrib with dof = n of dimensions
+sq_d_mahal_percentile = chi2.ppf(chi2_percentile, 
+                                 pairwise_sq_dists_one_frame.shape[1]) # loc=0? scale=1? stats.ncx2?
 
+plt.hlines(sqrt(sq_d_mahal_percentile),
+           0,len(d_mahal),
+           'r')
 
+# %%
 ###################################################
 ## Compute prob
+# prob of the random variable d**2 being above the observed value?
+# d is Mahalanobis distance, d**2 follows X**2 distribution
 proba = np.zeros(d_mahal.shape)
 for i,d in enumerate(proba):
-    proba[i,:] = 1 - chi2.cdf(d_mahal, np.sum(~mask))
+    
+    # COMPUTE p1=1-CDF.CHISQ(d-squared,nobsvar).
+    # https://stats.stackexchange.com/questions/28593/mahalanobis-distance-distribution-of-multivariate-normally-distributed-points
+    proba[i,:] = 1 - chi2.cdf(d_mahal[i,:]**2, 
+                              pairwise_sq_dists_one_frame.shape[1]) 
+   
 
+plt.plot(proba,
+         '.-')
+# plt.ylim([0,100])
+plt.xlabel('frame ID')
+plt.ylabel('prob of d**2 being above the observed value')
 
+plt.hlines(chi2_percentile,
+           0,len(proba),
+           'r')
 # %%
 #####################################################################################
 # Calculate Mahalanobis distance between selected pose and reference distribution 
@@ -278,11 +308,11 @@ else:
 
 # compute Mahalanobis distance and prob
 dot = dists @ inv_cov # conventional matrix multiplication
-mahal = factor * sqrt(np.sum((dot * dists), axis=-1))
-proba = 1 - chi2.cdf(mahal, np.sum(~mask))
+mahal = factor * sqrt(np.sum(((dists @ inv_cov) * dists), axis=-1)) # factor * sqrt(np.sum((dot * dists), axis=-1))
+proba = 1 - chi2.cdf(mahal, np.sum(~mask)) #---- i think it should be mahal**2?
 print(proba)
 
 # compare to
-# prob_eval = kde_slc_horses.evaluate()
+# prob_eval = kde_slc_horses.evaluate()?
 
 # %%
