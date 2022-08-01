@@ -33,6 +33,8 @@ train_data_file = \
 # cfg # inference_cfg?
 
 list_horseIDs_for_kde = [*range(15)]
+
+# sq_dist_diag_in_px2 = 288**2 + 162**2
 # select one row idx in labelled table,
 #  after removing frames with less than 90% of kpts to compute probability
 # idx_sel_frame = 1000
@@ -63,36 +65,32 @@ if n_bpts == 1:
     warnings.warn("There is only one keypoint; skipping calibration...")
     # return
 
-# add Horse ID as index
+# add Horse ID as column (level 0 ok?)
 set_horses_ID_str = np.unique([v for (u,v,w) in df_all_horses.index])
 dict_horse_ID_str_to_int = {el:j for j,el in enumerate(set_horses_ID_str)}
-# keep frame path info
-df_all_horses['framePath']=[os.path.join(*el) for el in df_all_horses.index] 
-df_all_horses.insert(0,'horseID',
+df_all_horses.insert(0,'horseID', # ('','horseID',''),
                     [dict_horse_ID_str_to_int[v] for (u,v,w) in df_all_horses.index],
-                    allow_duplicates=True)
+                    allow_duplicates=True,)
+
+# keep frame path info as index
+df_all_horses.loc[:,'framePath']=[os.path.join(*el) for el in df_all_horses.index] 
 df_all_horses.set_index('framePath', inplace=True)
 
-# %%
-# L=[v for (u,v,w) in df_all_horses.index]
-# for i, el in enumerate(set_horses_ID_str):
-#     if i == len(set_horses_ID_str)-1:
-#         print('end')
-#         break
-#     elif L.index(set_horses_ID_str[i+1])  != L.index(el) + L.count(el):
-#         break
-#     else:
-#         continue
+# df_all_horses['horseID'] = [dict_horse_ID_str_to_int[v] for (u,v,w) in df_all_horses.index]
+# df_all_horses.set_index('horseID', append=True, inplace=True)
+# df_all_horses.reorder_levels(['horseID'])
 
 
 
 # %%
 #########################################################################
-# Select one horse only and get matrix of bodyparts coords per frame
+# Add fraction of kpts visible per frame
+
+## Split selected and other horses
 # to select rows from a specific Horse: df.loc[df['Horse ID']==0]
 # https://stackoverflow.com/questions/17071871/how-do-i-select-rows-from-a-dataframe-based-on-column-values
-df_slc_horses = df_all_horses.loc[df_all_horses['horseID'].isin(list_horseIDs_for_kde)]
-df_other_horses = df_all_horses.loc[~df_all_horses['horseID'].isin(list_horseIDs_for_kde)]
+df_slc_horses = df_all_horses.loc[df_all_horses.loc[:,'horseID'].isin(list_horseIDs_for_kde),:]
+df_other_horses = df_all_horses.loc[~df_all_horses.loc[:,'horseID'].isin(list_horseIDs_for_kde),:]
 
 ## Get matrix of bdprts  coords  per frame 
 # Reshape joint data to matrix of (n_frames, n_bodyparts, 2) 
@@ -106,15 +104,22 @@ for bdpts_arr,df in zip([bdpts_per_frame_XY_slc_horses, bdpts_per_frame_XY_other
     frac_of_vis_kpts_per_frame = np.mean(~np.isnan(bdpts_arr), axis=(1, 2)) 
 
     # add to dataframe
-    df['fraction_vis_kpts'] = frac_of_vis_kpts_per_frame
+    df.loc[:,'fraction_vis_kpts'] = frac_of_vis_kpts_per_frame
 
 # %%
 #################################################################################
 ## Select only frames in which over 90% of kpts are visible
-bdpts_per_frame_XY_slc_horses_valid = bdpts_per_frame_XY_slc_horses[df_slc_horses['fraction_vis_kpts'] >= 0.9] # (4801, 22, 2)
+
+# for horses selected for kde: 0.9
+bdpts_per_frame_XY_slc_horses_valid = \
+    bdpts_per_frame_XY_slc_horses[df_slc_horses['fraction_vis_kpts'] >= 0.9] # (4801, 22, 2)
+
+# for horses for evaluation: 1
+bdpts_per_frame_XY_other_horses_fully_viz = \
+    bdpts_per_frame_XY_other_horses[df_other_horses['fraction_vis_kpts'] == 1] 
 
 
-# inspecting how many frames discarded...
+# plot how many frames discarded from set candidate to kde...
 print(sum(df_slc_horses['fraction_vis_kpts']  >= 0.9)/len(bdpts_per_frame_XY_slc_horses))
 
 plt.hist(df_slc_horses['fraction_vis_kpts'] , 
@@ -153,14 +158,16 @@ plt.show()
 
 # %%
 #########################################################
-## Compute pairwise distances between kpts -limbs lengths, replacing missing data with mean limb length
+## Compute limbs lengths: pairwise distances between kpts for selected frames with valid poses
+# Replace missing data with mean limb length
 # (n selected frames, nchoosek(22,2) )
 pairwise_sq_dists_per_frame= np.vstack([pdist(data, "sqeuclidean") \
-                                     for data in bdpts_per_frame_XY_slc_horses_valid]) #(4801, 231) # for each frame, pass array of sorted keypoints # are these all in the same order? I guess so if data is 'sorted'
+                                        for data in bdpts_per_frame_XY_slc_horses_valid]) #(4801, 231) # for each frame, pass array of sorted keypoints # are these all in the same order? I guess so if data is 'sorted'
 # replace missing data with mean
 mu = np.nanmean(pairwise_sq_dists_per_frame, axis=0) # mean limb length over all frames
 missing = np.isnan(pairwise_sq_dists_per_frame)
 pairwise_sq_dists_per_frame_no_nans = np.where(missing, mu, pairwise_sq_dists_per_frame)
+
 
 plt.matshow(pairwise_sq_dists_per_frame_no_nans)
 plt.legend()
@@ -173,6 +180,10 @@ plt.show()
 #####################################################
 ## Compute PCA components here? (and then pass that to Gaussian KDE?)
 # OJO normalise before PCA
+
+# PCA to get rid of multi-collinearity: 
+# https://stats.stackexchange.com/questions/70899/what-correlation-makes-a-matrix-singular-and-what-are-implications-of-singularit
+# https://stats.stackexchange.com/questions/142690/what-is-the-relation-between-singular-correlation-matrix-and-pca
 
 
 # %%
@@ -187,6 +198,37 @@ plt.show()
 kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans.T) # if a 2D array input should be # dimensions, # data
 kde_slc_horses.mean = mu
 
+# a = kde_slc_horses.resample(size=1)
+# kde_slc_horses.pdf(a) # 0?? bc values are large?
+
+## scale with max value observed?
+# sq_dist_diag_in_px2 = (288**2 + 162**2)
+# pairwise_sq_dists_per_frame_no_nans_scaled = \
+#     pairwise_sq_dists_per_frame_no_nans/sq_dist_diag_in_px2 #np.max(pairwise_sq_dists_per_frame_no_nans, axis=0)
+# kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans_scaled.T) # if a 2D array input should be # dimensions, # data
+# kde_slc_horses.mean = mu/sq_dist_diag_in_px2 #np.max(pairwise_sq_dists_per_frame_no_nans, axis=0)
+
+# kde_slc_horses.evaluate(kde_slc_horses.mean) 
+
+# %%
+# int_box = kde_slc_horses.integrate_box(np.min(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),
+#                                        np.max(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0))
+
+# int_box_mean = kde_slc_horses.integrate_box(0.1*kde_slc_horses.mean,
+#                                             1.1*kde_slc_horses.mean)   
+
+# for i,s in enumerate(pairwise_sq_dists_per_frame_no_nans_scaled):
+#     plt.plot(pairwise_sq_dists_per_frame_no_nans_scaled[i,:],'-')
+# plt.plot((mu/sq_dist_diag_in_px2),'r',label='mean')
+# # plt.plot(np.max(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),'k',label='min')
+# # plt.plot(np.min(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),'k--',label='max')
+# plt.show()
+# plt.legend()
+
+# %%
+# plt.hist(pairwise_sq_dists_per_frame_no_nans_scaled.flatten())
+# plt.xlabel('limb size relative to img diagonal')
+# plt.show()
 # try:
     # kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans.T) # if a 2D array input should be # dimensions, # data
     # kde_slc_horses.mean = mu
@@ -203,18 +245,62 @@ kde_slc_horses.mean = mu
 # - kde.factor = bandwidth factor
 # - kde._data_covariance = covariance matrix of the input data
 # - kde.covariance = The covariance matrix of dataset, scaled by the calculated bandwidth
+
+# %%
+###############################################################
+# kde example
+
+# def measure(n):
+#     "Measurement model, return two coupled measurements."
+#     x1 = np.random.normal(size=n)
+#     x2 = np.random.normal(scale=0.5, size=n)
+#     return x1+x2, x1-x2
+
+# m1, m2 = measure(5000)
+# xmin = m1.min()
+# xmax = m1.max()
+# ymin = m2.min()
+# ymax = m2.max()
+
+# values = np.vstack([m1, m2])
+# kernel = gaussian_kde(values) # if a 2D array input should be # dimensions, # data
+
+# X, Y = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+# positions = np.vstack([X.ravel(), Y.ravel()])
+# Z = np.reshape(kernel(positions).T, X.shape)
+
+# plt.imshow(np.rot90(Z), 
+#           cmap=plt.cm.gist_earth_r,#  vmin=0.0,vmax=1.0,
+#           extent=[xmin, xmax, ymin, ymax])
+# plt.plot(m1, m2, 'k.', markersize=2)
+# plt.xlim([xmin, xmax])
+# plt.ylim([ymin, ymax])
+# plt.colorbar()
+# plt.show()
+
+# print(kernel.evaluate(np.mean(values,axis=1)))
+# # print(np.linalg.det(kernel.covariance))
+# # print(np.linalg.det(kernel._data_covariance))
+
+# # %%
+# int_box = kernel.integrate_box(np.asarray([[-0.02579673, -0.00365534]]),
+#                                np.asarray([[-0.02579673, -0.00365534]]))   
+# print(kernel.evaluate(np.mean(values,axis=1)))
+# print(int_box)
+
+# int_box = kernel.integrate_box(np.min(values,axis=1),
+#                                np.max(values,axis=1))   
+
+# print(int_box)
 # %%
 ##################################################################################
-### Select one frame from the set of remaining horses
-# chose from frames in which all kpts are fully viz
-df_other_horses_fully_viz = df_other_horses.loc[df_other_horses['fraction_vis_kpts']==1] 
-bdpts_sel_frames_XY_other_horses = df_other_horses_fully_viz.drop(['horseID','fraction_vis_kpts'],axis=1,level=0).to_numpy().reshape(-1,n_bpts,2)
-# bdpts_one_frame_XY_other_horses = bdpts_one_frame_XY_other_horses[0,:,:] #random.randint(0,len(df_other_horses_fully_viz))]
+### Compute limb lengths (pairwise distance btw kpts) in set of remaining horses
 
-# compute pairwise sq-distances
+# Compute pairwise sq-distances
 # (n frames)
-pairwise_sq_dists_one_frame = np.asarray([pdist(arr, metric="sqeuclidean") 
-                                         for arr in bdpts_sel_frames_XY_other_horses])
+pairwise_sq_dists_per_frame_other_horses = \
+    np.asarray([pdist(arr, metric="sqeuclidean") 
+                for arr in bdpts_per_frame_XY_other_horses_fully_viz]) #bdpts_sel_frames_XY_other_horses])
 
 # plot frame with keypoints
 #
@@ -237,11 +323,11 @@ pairwise_sq_dists_one_frame = np.asarray([pdist(arr, metric="sqeuclidean")
 # Compute Mahalanobis distance to mean of kde distribution
 # why not the same as Jessy's method? :?
 
-d_mahal = np.zeros((pairwise_sq_dists_one_frame.shape[0],1))
+d_mahal = np.zeros((pairwise_sq_dists_per_frame_other_horses.shape[0],1))
 for i,d in enumerate(d_mahal):
-    d_mahal[i,:] = mahalanobis(pairwise_sq_dists_one_frame[i,:],
-                                            kde_slc_horses.mean,
-                                            kde_slc_horses._data_inv_cov) #inv_cov # kde_slc_horses._data_inv_cov
+    d_mahal[i,:] = mahalanobis(pairwise_sq_dists_per_frame_other_horses[i,:],
+                               kde_slc_horses.mean,
+                               kde_slc_horses._data_inv_cov) #inv_cov? # kde_slc_horses._data_inv_cov
 
 
 plt.plot(d_mahal)
@@ -252,7 +338,7 @@ plt.ylabel('Mahalanobis distance d (px)')
 # add percent point fn (percentiles, inverse of cdf: ppf(q, df, loc=0, scale=1))
 # d2 follows X**2 distrib with dof = n of dimensions
 sq_d_mahal_percentile = chi2.ppf(chi2_percentile, 
-                                 pairwise_sq_dists_one_frame.shape[1]) # loc=0? scale=1? stats.ncx2?
+                                 pairwise_sq_dists_per_frame_other_horses.shape[1]) # loc=0? scale=1? stats.ncx2?
 
 plt.hlines(sqrt(sq_d_mahal_percentile),
            0,len(d_mahal),
