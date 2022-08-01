@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # from scipy.spatial import cKDTree
 from scipy.spatial.distance import pdist, mahalanobis #, cdist
 # from scipy.special import softmax
-from scipy.stats import gaussian_kde, chi2
+from scipy.stats import gaussian_kde, chi2, ncx2
 
 
 import deeplabcut
@@ -161,15 +161,15 @@ plt.show()
 ## Compute limbs lengths: pairwise distances between kpts for selected frames with valid poses
 # Replace missing data with mean limb length
 # (n selected frames, nchoosek(22,2) )
-pairwise_sq_dists_per_frame= np.vstack([pdist(data, "sqeuclidean") \
+pairwise_dists_per_frame= np.vstack([pdist(data, "euclidean") \
                                         for data in bdpts_per_frame_XY_slc_horses_valid]) #(4801, 231) # for each frame, pass array of sorted keypoints # are these all in the same order? I guess so if data is 'sorted'
 # replace missing data with mean
-mu = np.nanmean(pairwise_sq_dists_per_frame, axis=0) # mean limb length over all frames
-missing = np.isnan(pairwise_sq_dists_per_frame)
-pairwise_sq_dists_per_frame_no_nans = np.where(missing, mu, pairwise_sq_dists_per_frame)
+mu = np.nanmean(pairwise_dists_per_frame, axis=0) # mean limb length over all frames
+missing = np.isnan(pairwise_dists_per_frame)
+pairwise_dists_per_frame_no_nans = np.where(missing, mu, pairwise_dists_per_frame)
 
 
-plt.matshow(pairwise_sq_dists_per_frame_no_nans)
+plt.matshow(pairwise_dists_per_frame_no_nans)
 plt.legend()
 plt.xlabel('sorted pairs of kpts')
 plt.ylabel('selected frames')
@@ -195,48 +195,12 @@ plt.show()
 # tend to be oversmoothed.
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.gaussian_kde.html 
 
-kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans.T) # if a 2D array input should be # dimensions, # data
+kde_slc_horses = gaussian_kde(pairwise_dists_per_frame_no_nans.T) # if a 2D array input should be # dimensions, # data
 kde_slc_horses.mean = mu
 
+## evaluate gives 0?
 # a = kde_slc_horses.resample(size=1)
 # kde_slc_horses.pdf(a) # 0?? bc values are large?
-
-## scale with max value observed?
-# sq_dist_diag_in_px2 = (288**2 + 162**2)
-# pairwise_sq_dists_per_frame_no_nans_scaled = \
-#     pairwise_sq_dists_per_frame_no_nans/sq_dist_diag_in_px2 #np.max(pairwise_sq_dists_per_frame_no_nans, axis=0)
-# kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans_scaled.T) # if a 2D array input should be # dimensions, # data
-# kde_slc_horses.mean = mu/sq_dist_diag_in_px2 #np.max(pairwise_sq_dists_per_frame_no_nans, axis=0)
-
-# kde_slc_horses.evaluate(kde_slc_horses.mean) 
-
-# %%
-# int_box = kde_slc_horses.integrate_box(np.min(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),
-#                                        np.max(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0))
-
-# int_box_mean = kde_slc_horses.integrate_box(0.1*kde_slc_horses.mean,
-#                                             1.1*kde_slc_horses.mean)   
-
-# for i,s in enumerate(pairwise_sq_dists_per_frame_no_nans_scaled):
-#     plt.plot(pairwise_sq_dists_per_frame_no_nans_scaled[i,:],'-')
-# plt.plot((mu/sq_dist_diag_in_px2),'r',label='mean')
-# # plt.plot(np.max(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),'k',label='min')
-# # plt.plot(np.min(pairwise_sq_dists_per_frame_no_nans_scaled,axis=0),'k--',label='max')
-# plt.show()
-# plt.legend()
-
-# %%
-# plt.hist(pairwise_sq_dists_per_frame_no_nans_scaled.flatten())
-# plt.xlabel('limb size relative to img diagonal')
-# plt.show()
-# try:
-    # kde_slc_horses = gaussian_kde(pairwise_sq_dists_per_frame_no_nans.T) # if a 2D array input should be # dimensions, # data
-    # kde_slc_horses.mean = mu
-    # self._kde = kde
-    # self.safe_edge = True
-# except np.linalg.LinAlgError:
-#     # Covariance matrix estimation fails due to numerical singularities
-#     warnings.warn("The assembler could not be robustly calibrated. Continuing without it...")
 
 # - kde.dataset = input data
 # - kde.d = dimensions of the space (variables)
@@ -246,6 +210,202 @@ kde_slc_horses.mean = mu
 # - kde._data_covariance = covariance matrix of the input data
 # - kde.covariance = The covariance matrix of dataset, scaled by the calculated bandwidth
 
+
+# %%
+##################################################################################
+### For set of remaining horses: compute Mahalanobis distance
+
+## Compute pairwise distances for remaining horses in frames with all kpts viz
+# (n frames)
+pairwise_dists_per_frame_other_horses = \
+    np.asarray([pdist(arr, metric="euclidean") 
+                for arr in bdpts_per_frame_XY_other_horses_fully_viz]) #bdpts_sel_frames_XY_other_horses])
+
+
+## Compute Mahalanobis distance from 'other' poses to kde distribution
+# why not the same as Jessy's method? :?
+d_mahal = np.zeros((pairwise_dists_per_frame_other_horses.shape[0],1))
+for i,d in enumerate(d_mahal):
+    d_mahal[i,:] = mahalanobis(pairwise_dists_per_frame_other_horses[i,:],
+                               kde_slc_horses.mean,
+                               kde_slc_horses._data_inv_cov) #inv_cov? # kde_slc_horses._data_inv_cov
+
+
+## Compute xth percentile (percentiles, inverse of cdf: ppf(q, df, loc=0, scale=1))
+# d_mahal**2 follows X**2 distrib with dof = n of dimensions
+# for points within distribution: d**2 follows chi2 distribution?
+sq_d_mahal_percentile = chi2.ppf(chi2_percentile, 
+                                 pairwise_dists_per_frame_other_horses.shape[1]) 
+                                 # loc=0? scale=1? stats.ncx2?
+
+# %%
+############
+## Compute Mahalanobis distance from points within distribution to kde distrbution to estimate the value for outliers
+d_mahal_within = np.zeros((pairwise_dists_per_frame_no_nans.shape[0],1))
+for i,d in enumerate(d_mahal_within):
+    d_mahal_within[i,:] = mahalanobis(pairwise_dists_per_frame_no_nans[i,:],
+                                      kde_slc_horses.mean, # np.mean(pairwise_dists_per_frame_no_nans, axis=0), #
+                                      kde_slc_horses.inv_cov)  # _data_inv_cov
+sq_d_mahal_percentile_within = chi2.ppf(0.05, 
+                                        pairwise_dists_per_frame_no_nans.shape[1], # dof
+                                        loc = pairwise_dists_per_frame_no_nans.shape[1],
+                                        scale = 1) # loc=0? scale=1? stats.ncx2?
+                                       
+print(np.count_nonzero(d_mahal_within**2 < sq_d_mahal_percentile_within)/len(d_mahal_within))
+
+plt.hist(d_mahal_within**2)
+plt.show()
+############
+
+# %%
+df = pairwise_dists_per_frame_no_nans.shape[1]
+mean, var, skew, kurt = chi2.stats(df, 
+                                   moments='mvsk')
+x = np.linspace(chi2.ppf(0.01, df), #scale=chi2_scale,loc=-1500),
+                chi2.ppf(0.99, df),100) #,scale=chi2_scale,loc=-1500), 100)
+
+plt.plot(x, chi2.pdf(x, df),
+        'r-', lw=5, alpha=0.6, label='chi2 pdf')          
+# plt.hist(d_mahal_within**2, 
+#          density=True, histtype='stepfilled', alpha=0.2)     
+plt.show()
+
+# %%
+df = pairwise_dists_per_frame_no_nans.shape[1]
+mean, var, skew, kurt = ncx2.stats(df, 
+                                   np.sum(kde_slc_horses.mean**2), 
+                                   moments='mvsk')
+x = np.linspace(ncx2.ppf(0.01, df, np.sum(kde_slc_horses.mean**2)), #scale=chi2_scale,loc=-1500),
+                ncx2.ppf(0.99, df, np.sum(kde_slc_horses.mean**2)),100) #,scale=chi2_scale,loc=-1500), 100)
+
+plt.plot(x, ncx2.pdf(x, df, np.sum(kde_slc_horses.mean**2)),
+        'r-', lw=5, alpha=0.6, label='chi2 pdf')          
+# plt.hist(d_mahal_within**2, 
+#          density=True, histtype='stepfilled', alpha=0.2)     
+plt.show()
+# %%
+############
+# ncx2
+# d_mahal_within = np.zeros((pairwise_dists_per_frame_no_nans.shape[0],1))
+# for i,d in enumerate(d_mahal_within):
+#     d_mahal_within[i,:] = mahalanobis(pairwise_dists_per_frame_no_nans[i,:],
+#                                       kde_slc_horses.mean, # np.mean(pairwise_dists_per_frame_no_nans, axis=0), #
+#                                       kde_slc_horses.inv_cov)  # _data_inv_cov
+# sq_d_mahal_percentile_within = ncx2.ppf(0.5, 
+#                                         pairwise_dists_per_frame_no_nans.shape[1],
+#                                         np.sqrt(np.sum(kde_slc_horses.mean**2)),
+#                                         scale = 1000) # loc=0? scale=1? stats.ncx2?
+                                       
+# np.count_nonzero(d_mahal_within**2 < sq_d_mahal_percentile_within)/len(d_mahal_within)
+# ############
+
+
+# plot distance per sample frame
+plt.plot(d_mahal)
+plt.ylim([0,100])
+plt.xlabel('frame ID')
+plt.ylabel('Mahalanobis distance d (px)')
+plt.hlines(sqrt(sq_d_mahal_percentile),
+           0,len(d_mahal),
+           'r')
+plt.show()
+
+plt.plot(d_mahal[:1300]**2)
+plt.show()
+plt.hist(d_mahal[:1300]**2)
+plt.vlines(sq_d_mahal_percentile,
+           0,max(d_mahal[:1300]**2),
+           'r')
+# plt.xlim([0,0.2e06])
+plt.show()
+# show a few frames from those above xth percentile
+
+
+
+# show a few frames within xth percentile
+
+
+### ncx2 instead of chi2?
+# For example, the standard (central) chi-squared distribution is the 
+# distribution of a sum of squared independent standard normal distributions, 
+# i.e., normal distributions with mean 0, variance 1. 
+# The noncentral chi-squared distribution generalizes this to normal 
+# distributions with arbitrary mean and variance.
+# https://en.wikipedia.org/wiki/Noncentral_distribution 
+# - If each of the elements in the sum of squares (pairwise_dists_per_frame_other_horses)
+#   can be considered a normally distributed r.v with mean 0, variance 1, then the 
+#   sum of their squares (~ d_mahal**2) follows a standard (central) chi-squared distribution
+# - But if each of the elements in pairwise_dists_per_frame_other_horses follows a 
+#   normal distribution with arbitrary mean and variance, the noncentral chi-squared 
+#   distribution should be used?
+
+# %%
+###################################################
+## Express in terms of prob
+# prob of the random variable d**2 being above the observed value?
+# d is Mahalanobis distance, d**2 follows X**2 distribution
+proba = np.zeros(d_mahal.shape)
+for i,d in enumerate(proba):
+    
+    # COMPUTE p1=1-CDF.CHISQ(d-squared,nobsvar).
+    # https://stats.stackexchange.com/questions/28593/mahalanobis-distance-distribution-of-multivariate-normally-distributed-points
+    proba[i,:] = 1 - chi2.cdf(d_mahal[i,:]**2, 
+                              pairwise_dists_per_frame_other_horses.shape[1]) 
+   
+
+# plot
+plt.plot(proba,
+         '.-')
+plt.xlabel('frame ID')
+plt.ylabel('prob of d**2 being above the observed value')
+plt.hlines(chi2_percentile,
+           0,len(proba),
+           'r')
+
+# %% 
+########################################
+########################################
+# Jessy's approach?
+
+# dev_sq_dists = pairwise_sq_dists_per_frame_other_horses - kde_slc_horses.mean # (1582, 231)
+# mahal = sqrt(np.sum(((dev_sq_dists @ kde_slc_horses.inv_cov) * dev_sq_dists), axis=-1)) # factor * sqrt(np.sum((dot * dists), axis=-1))
+# proba = 1 - chi2.cdf(mahal, np.sum(~mask))
+
+
+
+# %%
+#####################################################################################
+# Calculate Mahalanobis distance between selected pose and reference distribution 
+# (method of Assembler)
+# compute pairwise distances in selected skeleton and the deviation of the vector wrt to the mean? 
+# # It is a multi-dimensional generalization of the idea of measuring how many standard deviations away P is from the mean of D.
+# #  https://en.wikipedia.org/wiki/Mahalanobis_distance 
+# dists = pairwise_sq_dists_per_frame_other_horses - kde_slc_horses.mean #assembly.calc_pairwise_distances() - kde_slc_horses.mean #self._kde.mean
+# mask = np.isnan(dists) # slc nans
+
+# # Deal with nans
+# if nan_policy_mahalanobis == "little":
+#     inds = np.flatnonzero(~mask) # Return indices that are non-zero in the flattened version of a.
+#     dists = dists[inds] #keep only those that are not nan
+#     inv_cov = kde_slc_horses.inv_cov[np.ix_(inds, inds)] # self._kde.inv_cov[np.ix_(inds, inds)] # Using ix_ one can quickly construct index arrays that will index the cross product.
+#     # Correct distance to account for missing observations
+#     factor = kde_slc_horses.d / len(inds)
+# else:
+#     # Alternatively, reduce contribution of missing values to the Mahalanobis
+#     # distance to zero by substituting the corresponding means.
+#     dists[mask] = 0 # set distance of nans to 0
+#     mask.fill(False) # sets all the mask to false? (as if no nans)
+#     inv_cov = kde_slc_horses.inv_cov
+#     factor = 1
+
+# # compute Mahalanobis distance and prob
+# dot = dists @ inv_cov # conventional matrix multiplication
+# mahal = factor * sqrt(np.sum(((dists @ inv_cov) * dists), axis=-1))  # mean mahal distance?# factor * sqrt(np.sum((dot * dists), axis=-1))
+# proba = 1 - chi2.cdf(mahal, np.sum(~mask)) #---- i think it should be mahal**2?
+# print(proba)
+
+
+# %%
 # %%
 ###############################################################
 # kde example
@@ -286,119 +446,9 @@ kde_slc_horses.mean = mu
 # int_box = kernel.integrate_box(np.asarray([[-0.02579673, -0.00365534]]),
 #                                np.asarray([[-0.02579673, -0.00365534]]))   
 # print(kernel.evaluate(np.mean(values,axis=1)))
-# print(int_box)
+# print(int_box) # I would expect this to be close to evaluate output and its not?
 
 # int_box = kernel.integrate_box(np.min(values,axis=1),
 #                                np.max(values,axis=1))   
 
 # print(int_box)
-# %%
-##################################################################################
-### Compute limb lengths (pairwise distance btw kpts) in set of remaining horses
-
-# Compute pairwise sq-distances
-# (n frames)
-pairwise_sq_dists_per_frame_other_horses = \
-    np.asarray([pdist(arr, metric="sqeuclidean") 
-                for arr in bdpts_per_frame_XY_other_horses_fully_viz]) #bdpts_sel_frames_XY_other_horses])
-
-# plot frame with keypoints
-#
-
-# Evaluate
-# ---evaluate would be: how likely is this distribution to observe this precise pose?
-# # instead we ask: how many std away from the mean this point is
-# prob_from_eval = kde_slc_horses.evaluate(pairwise_sq_dists_one_frame.T) #(# of dimensions, # of points)-array
-
-# plt.plot(prob_from_eval) 
-# plt.show()
-
-# # Evaluate on same---zero???
-# prob_from_eval_inner = kde_slc_horses.evaluate(pairwise_sq_dists_per_frame_no_nans.T) #(# of dimensions, # of points)-array
-# plt.plot(prob_from_eval_inner) 
-# plt.show()
-
-# %%
-################################
-# Compute Mahalanobis distance to mean of kde distribution
-# why not the same as Jessy's method? :?
-
-d_mahal = np.zeros((pairwise_sq_dists_per_frame_other_horses.shape[0],1))
-for i,d in enumerate(d_mahal):
-    d_mahal[i,:] = mahalanobis(pairwise_sq_dists_per_frame_other_horses[i,:],
-                               kde_slc_horses.mean,
-                               kde_slc_horses._data_inv_cov) #inv_cov? # kde_slc_horses._data_inv_cov
-
-
-plt.plot(d_mahal)
-plt.ylim([0,100])
-plt.xlabel('frame ID')
-plt.ylabel('Mahalanobis distance d (px)')
-
-# add percent point fn (percentiles, inverse of cdf: ppf(q, df, loc=0, scale=1))
-# d2 follows X**2 distrib with dof = n of dimensions
-sq_d_mahal_percentile = chi2.ppf(chi2_percentile, 
-                                 pairwise_sq_dists_per_frame_other_horses.shape[1]) # loc=0? scale=1? stats.ncx2?
-
-plt.hlines(sqrt(sq_d_mahal_percentile),
-           0,len(d_mahal),
-           'r')
-
-# %%
-###################################################
-## Compute prob
-# prob of the random variable d**2 being above the observed value?
-# d is Mahalanobis distance, d**2 follows X**2 distribution
-proba = np.zeros(d_mahal.shape)
-for i,d in enumerate(proba):
-    
-    # COMPUTE p1=1-CDF.CHISQ(d-squared,nobsvar).
-    # https://stats.stackexchange.com/questions/28593/mahalanobis-distance-distribution-of-multivariate-normally-distributed-points
-    proba[i,:] = 1 - chi2.cdf(d_mahal[i,:]**2, 
-                              pairwise_sq_dists_one_frame.shape[1]) 
-   
-
-plt.plot(proba,
-         '.-')
-# plt.ylim([0,100])
-plt.xlabel('frame ID')
-plt.ylabel('prob of d**2 being above the observed value')
-
-plt.hlines(chi2_percentile,
-           0,len(proba),
-           'r')
-# %%
-#####################################################################################
-# Calculate Mahalanobis distance between selected pose and reference distribution 
-# (method of Assembler)
-# compute pairwise distances in selected skeleton and the deviation of the vector wrt to the mean? 
-# It is a multi-dimensional generalization of the idea of measuring how many standard deviations away P is from the mean of D.
-#  https://en.wikipedia.org/wiki/Mahalanobis_distance 
-dists = pairwise_sq_dists_one_frame - kde_slc_horses.mean #assembly.calc_pairwise_distances() - kde_slc_horses.mean #self._kde.mean
-mask = np.isnan(dists) # slc nans
-
-# Deal with nans
-if nan_policy_mahalanobis == "little":
-    inds = np.flatnonzero(~mask) # Return indices that are non-zero in the flattened version of a.
-    dists = dists[inds] #keep only those that are not nan
-    inv_cov = kde_slc_horses.inv_cov[np.ix_(inds, inds)] # self._kde.inv_cov[np.ix_(inds, inds)] # Using ix_ one can quickly construct index arrays that will index the cross product.
-    # Correct distance to account for missing observations
-    factor = kde_slc_horses.d / len(inds)
-else:
-    # Alternatively, reduce contribution of missing values to the Mahalanobis
-    # distance to zero by substituting the corresponding means.
-    dists[mask] = 0 # set distance of nans to 0
-    mask.fill(False) # sets all the mask to false? (as if no nans)
-    inv_cov = kde_slc_horses.inv_cov
-    factor = 1
-
-# compute Mahalanobis distance and prob
-dot = dists @ inv_cov # conventional matrix multiplication
-mahal = factor * sqrt(np.sum(((dists @ inv_cov) * dists), axis=-1)) # factor * sqrt(np.sum((dot * dists), axis=-1))
-proba = 1 - chi2.cdf(mahal, np.sum(~mask)) #---- i think it should be mahal**2?
-print(proba)
-
-# compare to
-# prob_eval = kde_slc_horses.evaluate()?
-
-# %%
