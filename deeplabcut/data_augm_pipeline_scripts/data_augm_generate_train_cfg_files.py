@@ -6,6 +6,9 @@ This script generates a set of train config files (pose_config.yaml files) for a
 - The next 11 models use the same data augmentation settings as the baseline, except for one data augmentation method
 - This script also copies the test config file from the 'parent' project to all the sub-projects for each model
 
+Example usage (from DeepLabCut directory):
+     python deeplabcut/data_augm_pipeline_scripts/data_augm_generate_train_cfg_files.py  '/media/data/stinkbugs-DLC-2022-07-15-SMALL/config.yaml' 'data_augm' 'deeplabcut/data_augm_pipeline_scripts/baseline.yaml' --train_iteration=1
+
 Contributors: Sofia, Jonas, Sabrina
 """
 
@@ -15,7 +18,7 @@ from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_training_dataset
 import re
 import argparse
-import pdb
+import yaml
 
 def create_parameters_dict():
     ##################################################################
@@ -30,7 +33,8 @@ def create_parameters_dict():
     parameters_dict['general'] = {'dataset_type': 'imgaug', # OJO! not all the following will be available?
                                     'batch_size': 1, # 128
                                     'apply_prob': 0.5,
-                                    'pre_resize': []} # Specify [width, height] if pre-resizing is desired
+                                    'pre_resize': [],
+                                    'net_type': 'resnet_50'} # Specify [width, height] if pre-resizing is desired
 
     ### Crop----is this applied if we select imgaug? I think so....
     parameters_dict['crop'] = {False: {'crop_by': 0.0,
@@ -102,7 +106,21 @@ def create_parameters_dict():
 
     ### Gaussian noise
     parameters_dict['gaussian_noise'] = {False: {'gaussian_noise': False},
-                                        True: {'gaussian_noise': True}}
+                                        True: {'gaussian_noise': True}}                                         
+
+    ### Cloudy weather
+    parameters_dict['cloudy'] = {False: {'clouds': False,
+                                         'fog': False,
+                                         'rain': False},
+                                True: {'clouds': True,
+                                         'fog': True,
+                                         'rain': True}}
+    ### Snowy weather
+    parameters_dict['snowy'] = {False: {'snow': False,
+                                        'snow_flakes': False},
+                                True: {'snow': True,
+                                        'snow_flakes': True}}
+
 
     return parameters_dict                                    
 
@@ -110,17 +128,52 @@ def create_parameters_dict():
 #############################################
 if __name__ == "__main__":
 
-    ##########################################################
-    ### Set config path of project with labelled data
+    ##############################################################
+    ## Parse command line input parameters
     # (we assume create_training_dataset has already been run)
-    config_path = sys.argv[1] #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
-
+    parser = argparse.ArgumentParser()
+    # required
+    parser.add_argument("config_path", #'/media/data/stinkbugs-DLC-2022-07-15/config.yaml' # '/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+                        type=str,
+                        help="path to config.yaml file [required]")
+    parser.add_argument("subdir_prefix_str", 
+                        type=str,
+                        help="prefix common to all subdirectories to train [required]")
+    parser.add_argument("baseline_yaml_file_path", 
+                        type=str,
+                        default='',
+                        help="path to file that defines the data augmentation baseline [required]")                       
+    # optional
+    parser.add_argument('-l',"--list_data_augm_idcs_to_flip", 
+                        type=int,
+                        nargs='+',
+                        default=[], #-----------------
+                        help="List of indices of data augmentation methods (as listed in baseline yaml file) to inspect effect of.\
+                              If no list is provided, the script generates a train config with every method 'flipped' \
+                              wrt the baseline [optional]")
+    parser.add_argument("--training_set_index", 
+                        type=int,
+                        default=0,
+                        help="Integer specifying which TrainingsetFraction to use. Note that TrainingFraction is a list in config.yaml.[optional]")
+    parser.add_argument("--train_iteration", 
+                        type=int,
+                        default=0, # default is 0, but in stinkbug is 1. can this be extracted?
+                        help="iteration number in terms of frames extraction and retraining workflow [optional]")
+    args = parser.parse_args()
+    
+    ##########################################################
+    ### Extract required input params
+    config_path = args.config_path
     # each model subfolder is named with the format: <modelprefix_pre>_<id>_<str_id>
-    modelprefix_pre = sys.argv[2] #"data_augm"
+    modelprefix_pre = args.subdir_prefix_str #"data_augm"
+    baseline_yaml_file_path = args.baseline_yaml_file_path
+
+    ### Optional params
+    list_idcs_to_flip_from_baseline = args.list_data_augm_idcs_to_flip
 
     # Other params
-    TRAINING_SET_INDEX=0 # default;
-    TRAIN_ITERATION=1 # iteration in terms of frames extraction; default is 0. can this be extracted?
+    TRAINING_SET_INDEX = args.training_set_index # default;
+    TRAIN_ITERATION = args.train_iteration # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
     ##########################################################
     ### Get config as dict and associated paths
@@ -134,9 +187,13 @@ if __name__ == "__main__":
     files_in_dataset_top_folder = os.listdir(dataset_top_folder)
     list_shuffle_numbers = []
     for file in files_in_dataset_top_folder:
-        if file.endswith(".mat"):
+        if file.endswith(".mat") and \
+            str(int(cfg['TrainingFraction'][TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
+
             shuffleNum = int(re.findall('[0-9]+',file)[-1])
             list_shuffle_numbers.append(shuffleNum)
+    # make list unique! (in case there are several training fractions)
+    list_shuffle_numbers = list(set(list_shuffle_numbers))
     list_shuffle_numbers.sort()
 
     # Get train and test pose config file paths from base project, for each shuffle
@@ -147,34 +204,30 @@ if __name__ == "__main__":
         base_test_pose_config_file_path_TEMP,\
         _ = deeplabcut.return_train_network_path(config_path,
                                                 shuffle=shuffle_number,
-                                                trainingsetindex=0)  # base_train_pose_config_file
+                                                trainingsetindex=TRAINING_SET_INDEX)  # base_train_pose_config_file
         list_base_train_pose_config_file_paths.append(base_train_pose_config_file_path_TEMP)
         list_base_test_pose_config_file_paths.append(base_test_pose_config_file_path_TEMP)
 
     ###############################################################
-    ## Create params dict
+    ## Create params dict -----potentially as a yaml file?
     parameters_dict = create_parameters_dict()
 
     ############################################################################
     ## Define baseline
-    baseline = {'crop':             True, #----check
-                'rotation':         True,
-                'scale':            True,
-                'mirror':           False,
-                'contrast':         True,
-                'motion_blur':      True,
-                'convolution':      False,
-                'grayscale':        False,
-                'covering':         True,
-                'elastic_transform': True,
-                'gaussian_noise':   False}
+    with open(args.baseline_yaml_file_path,'r') as yaml_file:
+        baseline = yaml.safe_load(yaml_file)
+    list_baseline_keys = list(baseline.keys())
+
 
     #################################################
     ## Create list of strings identifying each model
-    list_of_data_augm_models_strs = ['baseline']
-    for ky in baseline.keys() :
-        list_of_data_augm_models_strs.append(ky) #'wo_' + ky)
+    # if required: consider only specific data augmentation methods
+    if bool(list_idcs_to_flip_from_baseline):
+        list_baseline_keys = [list_baseline_keys[i] for i in list_idcs_to_flip_from_baseline]
 
+    list_of_data_augm_models_strs = ['baseline']
+    for ky in list_baseline_keys: #baseline.keys() :
+        list_of_data_augm_models_strs.append(ky) #'wo_' + ky)
 
     #########################################
     ## Loop to train each model
@@ -207,19 +260,19 @@ if __name__ == "__main__":
                                                     trainingsetindex=TRAINING_SET_INDEX, # default
                                                     modelprefix=model_prefix)
 
-            # copy test and train config from base project to this subdir
+            # make train and test directories for this subdir
             os.makedirs(str(os.path.dirname(one_train_pose_config_file_path))) # create parentdir 'train'
             os.makedirs(str(os.path.dirname(one_test_pose_config_file_path))) # create parentdir 'test'
 
+            # copy test and train config from base project to this subdir
             # copy base train config file
             shutil.copyfile(list_base_train_pose_config_file_paths[j],
-                            one_train_pose_config_file_path) 
-
+                                one_train_pose_config_file_path) 
             # copy base test config file
             shutil.copyfile(list_base_test_pose_config_file_paths[j],
-                            one_test_pose_config_file_path) 
+                                one_test_pose_config_file_path) 
 
-            # add to list
+           # add to list
             list_train_pose_config_path_per_shuffle.append(one_train_pose_config_file_path) 
             list_test_pose_config_path_per_shuffle.append(one_test_pose_config_file_path)
 
@@ -228,7 +281,7 @@ if __name__ == "__main__":
         # initialise dict with gral params
         edits_dict = dict()
         edits_dict.update(parameters_dict['general'])
-        for ky in baseline.keys():
+        for ky in baseline.keys(): # list_baseline_keys: #
             if daug_str == ky:
                 # Get params that correspond to the opposite state of the method daug_str in the baseline
                 d_temp = parameters_dict[ky][not baseline[ky]]

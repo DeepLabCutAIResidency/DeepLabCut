@@ -1,0 +1,419 @@
+# %%
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from deeplabcut.utils import auxiliaryfunctions
+import os
+import cv2
+import random
+
+
+def polygonArea(X, Y): 
+    # X and Y are numpy arrays of size nrows=N, ncolumns=2
+
+    n = X.shape[0]
+    # Initialize area
+    area = 0.0
+    # Calculate value of shoelace formula
+    j = n - 1
+    for i in range(0,n):
+        area += (X[j] + X[i]) * (Y[j] - Y[i])
+        j = i   # j is previous vertex to i
+    # Return absolute value
+    return int(abs(area / 2.0))
+
+# %%
+#############################################
+config_path = '/media/data/stinkbugs-DLC-2022-07-15/config.yaml'
+cfg = auxiliaryfunctions.read_config(config_path)
+project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_models_path = os.path.join(project_path, "dlc-models")
+
+# ideally: next bit from params and config?----
+human_labels_filepath = '/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/CollectedData_DLC.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
+df_human = pd.read_hdf(human_labels_filepath)
+df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
+
+## Plot a selected image
+image_row_idx = 20
+if type(df_human.index[image_row_idx]) is tuple:
+    img_relative_path = os.path.join(*df_human.index[image_row_idx]) 
+elif type(df_human.index[image_row_idx]) is str: 
+    img_relative_path = df_human.index[image_row_idx] 
+labeled_data_path = os.path.join(project_path, img_relative_path)
+
+image = cv2.imread(labeled_data_path)
+fig = plt.figure(figsize=(10,10))
+plt.imshow(image)
+
+########################################################
+### Get keypoints for this image
+lts = list(df_human.iloc[image_row_idx,:])
+x = lts[0::2]
+y = lts[1::2]
+x1 = [x for x in x if str(x) != 'nan'] # remove nan
+y1 = [x for x in y if str(x) != 'nan']
+# plt.scatter(x1,y1)
+
+points = np.array([x1,y1])
+points = points.T
+plt.scatter(points[:,0],points[:,1])
+
+########################################################
+### Compute convex hull 
+hull = ConvexHull(points)
+hull_pts = points[hull.vertices,:]#points[hull_indices, :]
+# for 2D, the hull vertices give the points in counter clockwise order
+
+
+# plot convex hull
+for simplex in hull.simplices:
+    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+
+# plot vertices
+plt.scatter(hull_pts[:,0], hull_pts[:,1], color='r',s=50)
+
+#######################################
+# Compute bounding box based on max min coords of keypoints
+Ymin = int(np.min(y1))
+Ymax = int(np.max(y1))
+Xmin = int(np.min(x1))
+Xmax = int(np.max(x1))
+cropped_image = image[Ymin:Ymax,Xmin:Xmax]
+# bdpts from crop image
+x_new = [x - Xmin for x in x1]
+y_new = [ y - Ymin for y in y1]
+
+points_new = np.array([x_new,y_new])
+points_new = points_new.T
+#plt.imshow(cropped_image)
+#plt.scatter(points_new[:,0],points_new[:,1])
+
+
+###########################
+# Select region in image and replace pixels
+image_w_replace = image
+# add no overlap!!!
+x_top_left_crop = min(int(random.random()*image.shape[1]),image.shape[1] - cropped_image.shape[1])
+y_top_left_crop = min(int(random.random()*image.shape[0]),image.shape[0] - cropped_image.shape[0])
+
+square_orig_x = np.arange(Ymin,Ymax)
+square_orig_y =np.arange(Xmin,Xmax)
+square_crop_x = np.arange(y_top_left_crop,y_top_left_crop+cropped_image.shape[0])
+square_crop_y = np.arange(x_top_left_crop,x_top_left_crop+cropped_image.shape[1])
+while y_top_left_crop+cropped_image.shape[0] in square_orig_x:
+    y_top_left_crop = min(int(random.random()*image.shape[0]),
+                        image.shape[0] - cropped_image.shape[0])
+    print(y_top_left_crop)
+
+while x_top_left_crop+cropped_image.shape[1] in square_orig_y:
+    x_top_left_crop = min(int(random.random()*image.shape[1]),
+                        image.shape[1] - cropped_image.shape[1])
+    print(x_top_left_crop)
+while y_top_left_crop in square_orig_x:
+    y_top_left_crop = min(int(random.random()*image.shape[0]),
+                        image.shape[0] - cropped_image.shape[0])
+    print(y_top_left_crop)
+
+while x_top_left_crop in square_orig_y:
+    x_top_left_crop = min(int(random.random()*image.shape[1]),
+                        image.shape[1] - cropped_image.shape[1])
+    print(x_top_left_crop)
+
+# %%
+
+image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
+                x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
+                0:] = cropped_image
+plt.imshow(image_w_replace)
+
+###########################################
+# Blend crop with back
+# blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
+# plt.imshow(blended)
+
+# %%
+
+
+# %%
+# final image
+fig = plt.figure(figsize=(10,12))
+x_random = [x + x_top_left_crop for x in x_new]
+y_random = [ y + y_top_left_crop for y in y_new]
+
+points_random = np.array([x_random,y_random])
+points_random = points_random.T
+plt.imshow(image_w_replace)
+plt.scatter(points[:,0],points[:,1],s=15)
+plt.scatter(points_random[:,0],points_random[:,1],s=15)
+
+
+
+
+
+# %%
+# loop in images
+
+number_of_bdpts = len(list(df_human.droplevel(level=1,axis=1).columns.values))/2
+number_label_frames = df_human.shape[0]
+lts_frames = np.arange(151,number_label_frames,3)
+
+for i in lts_frames:
+    if type(df_human.index[i]) is tuple:
+        img_relative_path = os.path.join(*df_human.index[i]) 
+    elif type(df_human.index[i]) is str: 
+        img_relative_path = df_human.index[i] 
+    labeled_data_path = os.path.join(project_path, img_relative_path)
+
+    image = cv2.imread(labeled_data_path)
+    
+    #plt.imshow(image)
+
+    ########################################################
+    ### Get keypoints for this image
+    lts = list(df_human.iloc[i,:])
+    x = lts[0::2]
+    y = lts[1::2]
+    x1 = [x for x in x if str(x) != 'nan'] # remove nan
+    y1 = [x for x in y if str(x) != 'nan']
+
+    if len(x1) == number_of_bdpts and len(y1) == number_of_bdpts :
+        #or maybe the 90% of the bdpts???
+
+        fig = plt.figure(figsize=(10,10))
+        points = np.array([x1,y1])
+        points = points.T
+        #plt.scatter(points[:,0],points[:,1])
+
+        ########################################################
+        ### Compute convex hull 
+        hull = ConvexHull(points)
+        hull_pts = points[hull.vertices,:]#points[hull_indices, :]
+        # for 2D, the hull vertices give the points in counter clockwise order
+
+
+        # plot convex hull
+        #for simplex in hull.simplices:
+        #    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
+
+        # plot vertices
+        #plt.scatter(hull_pts[:,0], hull_pts[:,1], color='r',s=50)
+
+        #######################################
+        # Compute bounding box based on max min coords of keypoints
+        Ymin = int(np.min(y1))
+        Ymax = int(np.max(y1))
+        Xmin = int(np.min(x1))
+        Xmax = int(np.max(x1))
+        cropped_image = image[Ymin:Ymax,Xmin:Xmax]
+        # bdpts from crop image
+        x_new = [x - Xmin for x in x1]
+        y_new = [ y - Ymin for y in y1]
+
+        points_new = np.array([x_new,y_new])
+        points_new = points_new.T
+        #plt.imshow(cropped_image)
+        #plt.scatter(points_new[:,0],points_new[:,1])
+        # Select region in image and replace pixels
+        image_w_replace = image
+        # add no overlap!!!
+        x_top_left_crop = min(int(random.random()*image.shape[1]),
+                                image.shape[1] - cropped_image.shape[1])
+        y_top_left_crop = min(int(random.random()*image.shape[0]),
+                                image.shape[0] - cropped_image.shape[0])
+        square_orig_x = np.arange(Ymin,Ymax)
+        square_orig_y =np.arange(Xmin,Xmax)
+        while y_top_left_crop+cropped_image.shape[0] in square_orig_x or  x_top_left_crop+cropped_image.shape[1] in square_orig_y or y_top_left_crop in square_orig_x or  x_top_left_crop in square_orig_y:
+            y_top_left_crop = min(int(random.random()*image.shape[0]),
+                                image.shape[0] - cropped_image.shape[0])
+            x_top_left_crop = min(int(random.random()*image.shape[1]),
+                                image.shape[1] - cropped_image.shape[1])
+
+        
+        image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
+                        x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
+                        0:] = cropped_image
+
+        ###########################################
+        # Blend crop with back
+        # blended = cv2.addWeighted(img1, 0.5, img2, 0.5, 0)
+        # plt.imshow(blended)
+
+        # final image
+        fig = plt.figure(figsize=(10,12))
+        x_random = [x + x_top_left_crop for x in x_new]
+        y_random = [ y + y_top_left_crop for y in y_new]
+
+        points_random = np.array([x_random,y_random])
+        points_random = points_random.T
+        plt.imshow(image_w_replace)
+        plt.scatter(points[:,0],points[:,1],s=15)
+        plt.scatter(points_random[:,0],points_random[:,1],s=15)
+
+
+
+# %%
+#now I want to work with a multianimal df!
+
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from deeplabcut.utils import auxiliaryfunctions
+import os
+import cv2
+import random
+
+
+def polygonArea(X, Y): 
+    # X and Y are numpy arrays of size nrows=N, ncolumns=2
+
+    n = X.shape[0]
+    # Initialize area
+    area = 0.0
+    # Calculate value of shoelace formula
+    j = n - 1
+    for i in range(0,n):
+        area += (X[j] + X[i]) * (Y[j] - Y[i])
+        j = i   # j is previous vertex to i
+    # Return absolute value
+    return int(abs(area / 2.0))
+
+# %%
+#############################################
+#work with mA df
+from scipy.spatial import ConvexHull, convex_hull_plot_2d
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from deeplabcut.utils import auxiliaryfunctions
+import os
+import cv2
+import random
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+
+# %%
+config_path = '/media/data/trimice-dlc-2021-06-22/config.yaml'
+cfg = auxiliaryfunctions.read_config(config_path)
+project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_models_path = os.path.join(project_path, "dlc-models")
+
+# ideally: next bit from params and config?----
+human_labels_filepath = '/media/data/trimice-dlc-2021-06-22/training-datasets/iteration-0/UnaugmentedDataSet_trimiceJun22/CollectedData_dlc.h5' #'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/training-datasets/iteration-0/UnaugmentedDataSet_sabris-mouseJul6/CollectedData_nirel.h5'
+df_human = pd.read_hdf(human_labels_filepath)
+df_human = df_human.droplevel('scorer',axis=1) #df_human['DLC'][:].iloc[0,:]
+
+number_of_ind = len(set([i[0] for i in list(df_human.columns.values)]))
+indiv = list(set([i[0] for i in list(df_human.columns.values)]))
+
+bdpts = list(set([i[1] for i in list(df_human.columns.values)]))
+#despues tengo que hacer un bdpts para cada ind por si tienen distinto 
+
+
+# %%
+## Plot a selected image
+image_row_idx = 20
+if type(df_human.index[image_row_idx]) is tuple:
+    img_relative_path = os.path.join(*df_human.index[image_row_idx]) 
+elif type(df_human.index[image_row_idx]) is str: 
+    img_relative_path = df_human.index[image_row_idx] 
+labeled_data_path = os.path.join(project_path, img_relative_path)
+
+image = cv2.imread(labeled_data_path)
+fig = plt.figure(figsize=(10,10))
+
+
+# %%
+
+
+lts = list(df_human.iloc[image_row_idx,:]['mus1'])
+x = lts[0::2]
+y = lts[1::2]
+x1 = [x for x in x if str(x) != 'nan'] # remove nan
+y1 = [x for x in y if str(x) != 'nan']
+# plt.scatter(x1,y1)
+
+points = np.array([x1,y1])
+points = points.T
+plt.scatter(points[:,0],points[:,1])
+
+Ymin = int(np.min(y1))
+Ymax = int(np.max(y1))
+Xmin = int(np.min(x1))
+Xmax = int(np.max(x1))
+cropped_image = image[Ymin:Ymax,Xmin:Xmax]
+# bdpts from crop image
+x_new = [x - Xmin for x in x1]
+y_new = [ y - Ymin for y in y1]
+
+points_new = np.array([x_new,y_new])
+points_new = points_new.T
+#plt.imshow(cropped_image)
+#plt.scatter(points_new[:,0],points_new[:,1])
+# Select region in image and replace pixels
+image_w_replace = image
+# add no overlap!!!
+x_top_left_crop = min(int(random.random()*image.shape[1]),
+                        image.shape[1] - cropped_image.shape[1])
+y_top_left_crop = min(int(random.random()*image.shape[0]),
+                        image.shape[0] - cropped_image.shape[0])
+square_orig_x = np.arange(Ymin,Ymax)
+square_orig_y =np.arange(Xmin,Xmax)
+
+## para que no se overlapee con sigo mismo
+while y_top_left_crop+cropped_image.shape[0] in square_orig_x or  x_top_left_crop+cropped_image.shape[1] in square_orig_y or y_top_left_crop in square_orig_x or  x_top_left_crop in square_orig_y:
+        y_top_left_crop = min(int(random.random()*image.shape[0]),
+                            image.shape[0] - cropped_image.shape[0])
+        x_top_left_crop = min(int(random.random()*image.shape[1]),
+                            image.shape[1] - cropped_image.shape[1])
+
+image_w_replace[y_top_left_crop:y_top_left_crop+cropped_image.shape[0],
+                x_top_left_crop:x_top_left_crop+cropped_image.shape[1],
+                0:] = cropped_image
+
+polygon_crop = Polygon([(x_top_left_crop,y_top_left_crop), ( x_top_left_crop, y_top_left_crop+cropped_image.shape[0]), 
+                        (x_top_left_crop+cropped_image.shape[1], y_top_left_crop+cropped_image.shape[0]),
+                        (x_top_left_crop+cropped_image.shape[1],y_top_left_crop)])
+plt.imshow(image)
+# %%
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+indivs_2 = ['mus2','mus3']
+dict_overlap ={}
+for i in indivs_2:
+
+    lts2 = list(df_human.iloc[image_row_idx,:][i])
+    x2 = lts2[0::2]
+    y2 = lts2[1::2]
+    x12 = [x for x in x2 if str(x) != 'nan'] # remove nan
+    y12 = [x for x in y2 if str(x) != 'nan']
+    # plt.scatter(x1,y1)
+
+    points2 = np.array([x12,y12])
+    points2 = points2
+    for k in range(len(points2[0])):
+        print(polygon_crop.contains(Point(points2[0][k],points2[1][k])))
+        if polygon_crop.contains(Point(points2[0][k],points2[1][k])):
+            points2[0][k] = np.nan
+            points2[1][k] = np.nan
+            print(1)
+    dict_overlap[i] = points2
+print(dict_overlap)
+# %%
+fig = plt.figure(figsize=(10,12))
+for i in dict_overlap.keys():
+    plt.scatter(dict_overlap[i][0],dict_overlap[i][1])
+
+
+x_random = [x + x_top_left_crop for x in x_new]
+y_random = [ y + y_top_left_crop for y in y_new]
+
+points_random = np.array([x_random,y_random])
+points_random = points_random.T
+plt.imshow(image_w_replace)
+plt.scatter(points[:,0],points[:,1],s=15,color = 'r')
+plt.scatter(points_random[:,0],points_random[:,1],s=15,color ='r')
+plt.imshow(image)
+
+
+# %%

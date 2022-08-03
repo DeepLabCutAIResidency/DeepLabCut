@@ -4,8 +4,11 @@ We pass as command line inputs
 - config.yaml path [required]
 - string prefix identifying the subdirectories of the models we want to train, in the parent folder of the config.yaml file (e.g.: data_augm_)
 - gpu to use [required]
-- indices of the models to train from the subset that start with the input prefix, in alphabetical order [required]
+- indices of the models to train from the subset that start with the input prefix, in alphabetical order [optional]
+- snapshot to initialise each model and shuffle from if different from default [optional]
+- optimizer paramers, if different from default. Default is Adam, batch size = 8 and Adam learning-rate schedule [optional]
 For a detailed description of inputs run 'python data_augm_train_all_models.py --help'
+
 
 Example usage:
 1- To train the first three models in the sorted list of subdirs that start with data_augm_*, in gpu=3, run: 
@@ -21,14 +24,13 @@ python data_augm_train_all_models.py /Users/user/Desktop/sabris-mouse/sabris-mou
 Contributors: Jonas, Sofia
 """
 
-import os
-import sys
+import os, sys
 import deeplabcut
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 import re 
 import argparse
 import yaml
-import pdb
+# import pdb
 
 ###########################################
 def train_all_shuffles(config_path, # config.yaml, common to all models
@@ -45,6 +47,10 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
     """
     Train all shuffles for a given model
 
+    Edit train config file:
+    - if initial weights for a certain shuffle are different from default ones
+    - if optimizer parameters are provided
+
     """
     
     ##########################################################
@@ -59,44 +65,51 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
     iteration_folder = os.path.join(training_datasets_path, 'iteration-' + str(train_iteration))
     dataset_top_folder = os.path.join(iteration_folder, os.listdir(iteration_folder)[0])
     files_in_dataset_top_folder = os.listdir(dataset_top_folder)
-    shuffle_numbers = []
+    list_shuffle_numbers = []
     for file in files_in_dataset_top_folder:
-        if file.endswith(".mat"):
+        if file.endswith(".mat") and \
+            str(int(cfg['TrainingFraction'][TRAINING_SET_INDEX]*100))+'shuffle' in file: # get shuffles for this training fraction idx only!
+
             shuffleNum = int(re.findall('[0-9]+',file)[-1])
-            shuffle_numbers.append(shuffleNum)
-    shuffle_numbers.sort()
+            list_shuffle_numbers.append(shuffleNum)
+    # make list unique! (in case there are several training fractions)
+    list_shuffle_numbers = list(set(list_shuffle_numbers))
+    list_shuffle_numbers.sort()
 
     ##########################################################
     ### Train every shuffle for this model
-    for sh in shuffle_numbers:
+    # pdb.set_trace()
+    for sh in list_shuffle_numbers: #[list_shuffle_numbers[0]]: #----------------TEMPORARY-Hack!!! To train only first shuffle!
+        ## Initialise dict with additional edits to train config: initial weights if provided and optimizer
+        train_edits_dict = {}
+
         ## If specific initial weights are provided: edit pose_cfg for this shuffle
-        if bool(dict_init_weights_per_modelprefix_and_shuffle): # empty dict will evaluate to false
-            try:
-                # if there is a snapshot defined for this modelprefix and shuffle in the dict, take it
-                snapshot_path = dict_init_weights_per_modelprefix_and_shuffle[modelprefix][sh]
-
-                # get path to train config for this shuffle
-                one_train_pose_config_file_path,\
-                _,_ = deeplabcut.return_train_network_path(config_path,
-                                                            shuffle=sh,
-                                                            trainingsetindex=trainingsetindex, 
-                                                            modelprefix=modelprefix)
-                # edit config
-                edit_config(str(one_train_pose_config_file_path), 
-                            {'init_weights': snapshot_path})
-
-                # print
-                print('Initialising weights for model {} - shuffle {}, with snapshot at {}'.format(modelprefix,sh,snapshot_path))
+        if bool(dict_init_weights_per_modelprefix_and_shuffle):
+            try: 
+                snapshot_path = dict_init_weights_per_modelprefix_and_shuffle[modelprefix][sh] # if there is a snapshot defined for this modelprefix and shuffle in the dict, take it
+                train_edits_dict.update({'init_weights': snapshot_path})
             except KeyError:
                 pass
 
-        ## Change optimizer, batch size and learning rate if a dict is passed
+        ## Set optimizer to input values (same for all models and shuffles)
         if bool(dict_optimizer):
-            pdb.set_trace()
+            train_edits_dict.update({'optimizer': dict_optimizer['optimizer'], #'adam',
+                                     'batch_size': dict_optimizer['batch_size'], #16,
+                                     'multi_step': dict_optimizer['multi_step']}) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
+
+        ## If edits have been added to dict: edit train cfg file
+        if bool(train_edits_dict):
+            # get path to train config for this shuffle
+            one_train_pose_config_file_path,\
+            _,_ = deeplabcut.return_train_network_path(config_path,
+                                                        shuffle=sh,
+                                                        trainingsetindex=trainingsetindex, 
+                                                        modelprefix=modelprefix)
+            # add changes 
             edit_config(str(one_train_pose_config_file_path), 
-                            {'optimizer': dict_optimizer['optimizer'], #'adam',
-                            'batch_size': dict_optimizer['batch_size'], #16,
-                            'multi_step': dict_optimizer['multi_step']}) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
+                        train_edits_dict) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
+
+        
 
         ## Train this shuffle
         deeplabcut.train_network(config_path, # config.yaml, common to all models
@@ -146,7 +159,7 @@ if __name__ == "__main__":
                         type=str,
                         default='',
                         help="path to file that sets the optimizer parameters. If none is passed, Adam parameters are used \
-                              (optimizer=Adam, batch_size=16, multi_step= [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]])\
+                              (optimizer=adam, batch_size=8, multi_step= [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]])\
                               [optional]")
 
     # Other  training params [otpional]
@@ -160,11 +173,11 @@ if __name__ == "__main__":
                         help="maximum number of snapshots to keep [optional]")
     parser.add_argument("--display_iters", 
                         type=int,
-                        default=10000,
+                        default=1000,
                         help="display average loss every N iterations [optional]")
     parser.add_argument("--max_iters", 
                         type=int,
-                        default=300000,
+                        default=200_000, # 300000
                         help="maximum number of training iterations [optional]")
     parser.add_argument("--save_iters", 
                         type=int,
@@ -201,15 +214,13 @@ if __name__ == "__main__":
 
     ### Get dict with optimizer parameters. If none provided, Adam is used [optional]
     # if yaml file passed, read dict
-    pdb.set_trace()
     if bool(args.optimizer_yaml_file): 
         with open(args.optimizer_yaml_file,'r') as yaml_file:
             dict_optimizer = yaml.safe_load(yaml_file)
     else:
         dict_optimizer = {'optimizer':'adam',
-                          'batch_size': 16,
+                          'batch_size': 8,
                           'multi_step': [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]} # if no yaml file passed, initialise as an empty dict
-
 
     #######################################################################################
     ## Compute list of subdirectories that start with 'subdir_prefix_str'
