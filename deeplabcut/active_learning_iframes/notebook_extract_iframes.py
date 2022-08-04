@@ -12,6 +12,7 @@ import cv2
 import subprocess
 
 import matplotlib.pyplot as plt
+import numpy as np
 #################################################
 # %% 
 def extract_i_frames(video_path):
@@ -26,7 +27,8 @@ project_dir = '/home/sofia/datasets/Horses-Byron-2019-05-08'
 labelled_data_h5file = \
     os.path.join(project_dir,'training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5') # h5 file
 
-video_FPS=30
+video_FPS=60
+step_frames_unif = 25
 
 video_temp_path = '/home/sofia/datasets/temp.avi'
 
@@ -45,7 +47,7 @@ list_subdirs = sorted(set(l),key=l.index)
 # map subdirectory to files inside it ---maybe specify extension?
 map_subdirs_to_files = dict()
 for d in list_subdirs:
-    map_subdirs_to_files[d]  = [el for el in list_paths_to_files if d in el]
+    map_subdirs_to_files[d]  = [os.path.join(project_dir,u,v,w) for u,v,w in df.index if d==v] # ---improve this bit
     
 # labeled_data_dir = '/home/sofia/datasets/Horses-Byron-2019-05-08/labeled-data'
 # list_subdirs = os.listdir(labeled_data_dir)
@@ -56,7 +58,7 @@ for d in list_subdirs:
 # loop thru directories (one directory=one video)
 bool_iframes_in_df = [False]*len(df)
 
-for d in map_subdirs_to_files.keys():
+for d in list(map_subdirs_to_files.keys()):
 
     # get image size (assuming common to all files in this directory)
     list_wh_img = [tuple([cv2.imread(f).shape[i] for i in [1,0]]) for f in map_subdirs_to_files[d]]
@@ -78,15 +80,18 @@ for d in map_subdirs_to_files.keys():
 
     # extract i-frames (idcs relative to video)
     idcs_i_frames_wrt_video = extract_i_frames(video_temp_path)
+    print(np.diff(np.asarray(idcs_i_frames_wrt_video)))
 
     # inspect how many frames from video are iframes
-    # bool_list = [True if j in idcs_i_frames_wrt_video else False for j in range(len(map_subdirs_to_files[d]))]
-    # # l=[i for i,x in enumerate(bool_list) if x]; l==idcs_i_frames_wrt_video --- True
-    # plt.plot(bool_list,'.')
-    # plt.show()
-    # plt.xlabel('frame')
-    # plt.ylabel('i-frame == True')
-
+    plt_bool_list_iframes = [True if j in idcs_i_frames_wrt_video else False for j in range(len(map_subdirs_to_files[d]))]
+    plt_bool_list_unif = [True if j%step_frames_unif==0 else False for j in range(len(map_subdirs_to_files[d]))]
+    # l=[i for i,x in enumerate(bool_list) if x]; l==idcs_i_frames_wrt_video --- True
+    plt.plot(plt_bool_list_iframes,'r.',label='iframes')
+    plt.plot(plt_bool_list_unif,'b.',label='unif')
+    plt.xlim([0,50])
+    plt.xlabel('frame')
+    plt.ylabel('i-frame == True')
+    plt.show()
     # get frames filenames for i-frames
     # list_frames_png_str = map_subdirs_to_files[d]
     list_i_frames_png_str = [map_subdirs_to_files[d][j] for j in idcs_i_frames_wrt_video]
