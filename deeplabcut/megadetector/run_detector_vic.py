@@ -43,6 +43,7 @@ https://github.com/tensorflow/models/blob/master/research/object_detection/infer
 #export PYTHONPATH="$PYTHONPATH:$HOME/git/cameratraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
 # python detection/run_detector.py "/home/vic/vic_data/dlclive4mega/md_v5b.0.0.pt" --image_file "/home/vic/vic_data/dlclive4mega/africanwilddog.jpeg" --threshold 0.1
 #but actually we just need to get the outputs, so don't need to integrate it in here
+# python detection/run_detector_batch.py "/home/vic/vic_data/dlclive4mega/md_v5b.0.0.pt" "/home/vic/vic_data/dlclive4mega/africanwilddog.jpeg" "/home/vic/vic_data/dlclive4mega/output.json" -you need this in order to get the output json
 
 # import sys
 # for p in sys.path:
