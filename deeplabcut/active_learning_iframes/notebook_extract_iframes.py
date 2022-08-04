@@ -131,12 +131,19 @@ plt.ylim([5,10])
 plt.show()
 ####################################################
 # %%
-# add results to dataframe and 
+# add results to dataframe and save h5 file  ---- print warning if overwriting!
 df.insert(0,"I-frame",bool_iframes_in_df)
 
 df.to_hdf(labelled_data_h5file.split('.h5')[0]+'_iframes.h5',
           "df_with_missing",
-          format="table",
           mode="w")
 #################################################
 # %% delete temp video if required (eventually user input whether to keep it or not?)
+
+
+# check equal
+# # %%
+# df0 = pd.read_hdf(labelled_data_h5file)
+# df1 = pd.read_hdf('/home/sofia/datasets/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron_iframes.h5')
+#
+# df0.equals(df1.drop('I-frame',axis=1,level=0))
