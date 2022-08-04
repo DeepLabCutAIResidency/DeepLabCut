@@ -11,7 +11,9 @@ import pandas as pd
 import cv2
 import subprocess
 
+import matplotlib.pyplot as plt
 #################################################
+# %% 
 def extract_i_frames(video_path):
     command = 'ffprobe -v error -show_entries frame=pict_type -of default=noprint_wrappers=1'.split()
     out = subprocess.check_output(command + [video_path]).decode()
@@ -26,19 +28,21 @@ labelled_data_h5file = \
 
 video_FPS=30
 
-video_temp_path = 'temp.avi'
+video_temp_path = '/home/sofia/datasets/temp.avi'
 
 #################################################
 # %% 
 # Read dataframe with labelled data
 df = pd.read_hdf(labelled_data_h5file)
+# ----> ensure frames per video are sorted? assuming name corresponds to frame number
 
-list_paths_to_files = [os.path.join(*el) for el in df.index]
-# sort in original order!
+list_paths_to_files = [os.path.join(project_dir,*el) for el in df.index]
+# when making list with unique elements, ensure they are sorted in the same \
+# order as in original!
 l=[os.path.join(v) for u,v,w in df.index]
-list_subdirs = sorted(set(l),
-                      key=l.index)
+list_subdirs = sorted(set(l),key=l.index)
 
+# map subdirectory to files inside it ---maybe specify extension?
 map_subdirs_to_files = dict()
 for d in list_subdirs:
     map_subdirs_to_files[d]  = [el for el in list_paths_to_files if d in el]
@@ -49,27 +53,59 @@ for d in list_subdirs:
 #     print(dir)
 ##############################################################
 # %% Extract i-frames per video
+# loop thru directories (one directory=one video)
+bool_iframes_in_df = [False]*len(df)
 
 for d in map_subdirs_to_files.keys():
 
-    # get image size of all files in video
-    list_h_w_img = \
-        [cv2.imread(f).shape for f in map_subdirs_to_files[d]]
-    list_h_w_img =  [(w,h) for h,w,c in list_h_w_img]
-    if not all([list_h_w_img[0]==l for l in list_h_w_img]):
+    # get image size (assuming common to all files in this directory)
+    list_wh_img = [tuple([cv2.imread(f).shape[i] for i in [1,0]]) for f in map_subdirs_to_files[d]]
+    if not all([list_wh_img[0]==l for l in list_wh_img]):
         break
-    img_size = list_h_w_img[0]
+    img_size_wh = list_wh_img[0]
 
     # initialise video for this dir---use context?
     out = cv2.VideoWriter(video_temp_path, #'temp.avi',
                           cv2.VideoWriter_fourcc(*'DIVX'),
-                          video_FPS, img_size)
+                          video_FPS, 
+                          img_size_wh)
 
     # write frames to video
     for f in map_subdirs_to_files[d]:
-        img = cv2.imread(os.path.join(project_dir,f)) #-----------check path
+        img = cv2.imread(f) 
         out.write(img)      
     out.release()
 
-    # extract i-frames
-    list_idx_i_frames_wrt_video = extract_i_frames(video_temp_path)
+    # extract i-frames (idcs relative to video)
+    idcs_i_frames_wrt_video = extract_i_frames(video_temp_path)
+
+    # inspect how many frames from video are iframes
+    # bool_list = [True if j in idcs_i_frames_wrt_video else False for j in range(len(map_subdirs_to_files[d]))]
+    # # l=[i for i,x in enumerate(bool_list) if x]; l==idcs_i_frames_wrt_video --- True
+    # plt.plot(bool_list,'.')
+    # plt.show()
+    # plt.xlabel('frame')
+    # plt.ylabel('i-frame == True')
+
+    # get frames filenames for i-frames
+    # list_frames_png_str = map_subdirs_to_files[d]
+    list_i_frames_png_str = [map_subdirs_to_files[d][j] for j in idcs_i_frames_wrt_video]
+
+    # add to dataframe
+    bool_iframes_in_df = [x or y for x,y in zip(bool_iframes_in_df,
+                                                [True if el in list_i_frames_png_str else False 
+                                                    for el in list_paths_to_files])] 
+    # bool_iframes_in_df = bool_iframes_in_df or \
+    #                      [True if el in list_i_frames_png_str else False \
+    #                       for el in list_paths_to_files] 
+    # check:
+    # idcs_where_true = [i for i,x in enumerate(bool_iframes_in_df) if x]
+    # [list_paths_to_files[j] for j in idcs_where_true]==list_i_frames_png_str
+
+####################################################
+# add results to dataframe and save as h5
+
+df.insert(0,"I-frame",bool_iframes_in_df)
+
+#################################################
+# %% delete temp video if required (eventually user input)
