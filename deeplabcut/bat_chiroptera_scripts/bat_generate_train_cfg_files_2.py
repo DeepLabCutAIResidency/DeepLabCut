@@ -11,7 +11,6 @@ Contributors: Sofia, Jonas, Sabrina
 import os, shutil
 import deeplabcut
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
-from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_training_dataset
 import re
 import argparse
 import yaml

@@ -120,10 +120,10 @@ def perBodypartPixelError(config_path, shuffle=0, snapindex=-1, trainFractionInd
     # return values
 
     testerror_all_mean = np.nanmean(RMSE.iloc[testIndices].values.flatten())
-    testerror_all_mean_pcutoff = np.nanmean(RMSE.iloc[testIndices].values.flatten())
+    testerror_all_mean_pcutoff = np.nanmean(RMSEpcutoff.iloc[testIndices].values.flatten())
 
     trainerror_all_mean = np.nanmean(RMSE.iloc[trainIndices].values.flatten())
-    trainerror_all_mean_pcutoff = np.nanmean(RMSE.iloc[trainIndices].values.flatten())
+    trainerror_all_mean_pcutoff = np.nanmean(RMSEpcutoff.iloc[trainIndices].values.flatten())
 
     testerror_per_bodypart_mean = pd.DataFrame([np.nanmean(RMSE.iloc[testIndices].values, axis=0)], columns=cfg["bodyparts"])
     testerror_per_bodypart_mean['ALL'] = testerror_all_mean
@@ -141,7 +141,7 @@ def perBodypartPixelError(config_path, shuffle=0, snapindex=-1, trainFractionInd
     testerror_all_std_pcutoff = np.nanstd(RMSE.iloc[testIndices].values.flatten())
 
     trainerror_all_std = np.nanstd(RMSE.iloc[trainIndices].values.flatten())
-    trainerror_all_std_pcutoff = np.nanstd(RMSE.iloc[trainIndices].values.flatten())
+    trainerror_all_std_pcutoff = np.nanstd(RMSEpcutoff.iloc[trainIndices].values.flatten())
 
     testerror_per_bodypart_std = pd.DataFrame([np.nanstd(RMSE.iloc[testIndices].values, axis=0)], columns=cfg["bodyparts"])
     testerror_per_bodypart_std['ALL'] = testerror_all_std

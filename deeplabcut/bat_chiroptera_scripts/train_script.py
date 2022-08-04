@@ -1,8 +1,13 @@
-## Initialise dict with additional edits to train config: optimizer
-train_edits_dict = {}
-dict_optimizer = {'optimizer':'adam',
-    'batch_size': 8,
-    'multi_step': [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]} # if no yaml file passed, initialise as an empty dict
-train_edits_dict.update({'optimizer': dict_optimizer['optimizer'], #'adam',
-    'batch_size': dict_optimizer['batch_size'], #16,
-    'multi_step': dict_optimizer['multi_step']}) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
+import os
+import deeplabcut
+config_path = '/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-07-29/config.yaml'
+shuffles = [1,2,3,4]
+modelprefix = "data_augm_00_baseline"
+max_snapshots_to_keep=20
+displayiters=1000
+maxiters=100000
+saveiters=50000
+gputouse=3
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+for shuffle in shuffles:
+    deeplabcut.train_network(config_path, shuffle=shuffle, displayiters=displayiters, saveiters=saveiters, maxiters=maxiters, max_snapshots_to_keep=max_snapshots_to_keep, modelprefix=modelprefix, gputouse=gputouse, allow_growth=True)
