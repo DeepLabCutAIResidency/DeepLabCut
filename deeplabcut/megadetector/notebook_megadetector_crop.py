@@ -2,11 +2,9 @@
 # Set python path
 #set PYTHONPATH="$PYTHONPATH:$HOME/git/cameratraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
 import sys
-# from matplotlib.lines import _LineStyle
+sys.path.insert(0, "/home/vic/git") #change the python path to where your git repos are (need megadetector related)
 
-# from pyparsing import lineStart
 # sys.path.append("/home/vic/git/ai4eutils")
-sys.path.insert(0, "/home/vic/git")
 # sys.path.append("/home/vic/git/yolov5")
 # for p in sys.path:
 #      print(p)
@@ -20,31 +18,34 @@ import os
 import sys
 import time
 import warnings
-
 import humanfriendly
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL
-from PIL import Image
-
 import pandas as pd
-from PIL import Image, ImageFile, ImageFont, ImageDraw
 import statistics
 import tensorflow.compat.v1 as tf 
 tf.disable_v2_behavior()
-from tqdm import tqdm
 
+from PIL import Image, ImageFile, ImageFont, ImageDraw
+from PIL import Image
+from tqdm import tqdm
 from cameratraps.ct_utils import truncate_float
 from dlclive import DLCLive, Processor
+from numpy import asarray
+from numpy import savetxt
 
 
 # %%
-input_json_path = "/home/vic/vic_data/dlclive4mega/output.json"
-path_to_exported_model_directory = "/home/vic/vic_data/dlclive4mega/DLC_Dog_resnet_50_iteration-0_shuffle-0"
+# variables to set
+input_json_path = "/home/vic/vic_data/dlclive4mega/output2.json" #change to your json file
+path_to_exported_model_directory = "/home/vic/vic_data/dlclive4mega/models/DLC_monkey_resnet_50_iteration-0_shuffle-1" 
+# download the model, and set the path to it
 
 # %%
-# Draw bounding box 
-def draw_bboxs(detections_list, im):
+# Draw bounding box - don't worry about this for now? 
+
+""" def draw_bboxs(detections_list, im):
     """
     detections_list: list of set includes bbox.
     im: image read by Pillow.
@@ -61,7 +62,7 @@ def draw_bboxs(detections_list, im):
                                       ymin * imageHeight, ymax * imageHeight)
         
         draw.line([(left, top), (left, bottom), (right, bottom),
-               (right, top), (left, top)], width=4, fill='Red')
+               (right, top), (left, top)], width=4, fill='Red') """
 
 
 
@@ -70,11 +71,15 @@ def draw_bboxs(detections_list, im):
 # Read detections from json
 with open(input_json_path, 'r') as f:
     detection_results = json.load(f)
-# %%
-# for every image, for every bounding box, extract the bounding box
 
+# %%
+# initialize dlc live 
 dlc_proc = Processor()
 dlc_live = DLCLive(path_to_exported_model_directory, processor=dlc_proc)
+
+
+# %%
+# for every image, for every bounding box, extract the bounding box
 
 for img_data in detection_results["images"]:
     img = Image.open(img_data['file'])
@@ -100,6 +105,7 @@ for img_data in detection_results["images"]:
         crop_np = np.asarray(crop)  
         dlc_live.init_inference(crop_np) #---why this needed? should it be outside the loop?
         keypts = dlc_live.get_pose(crop_np) #(20, 3): x, y, confidence
+        savetxt('pose.csv', keypts, delimiter=',') #saves this, but what if you have more... 
 
         plt.imshow(crop)
         plt.scatter(keypts[:,0], keypts[:,1], 40,
@@ -108,9 +114,4 @@ for img_data in detection_results["images"]:
         
         
 
-
-
-
-
-# %%
 

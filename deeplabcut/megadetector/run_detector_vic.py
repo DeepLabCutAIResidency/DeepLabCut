@@ -43,7 +43,9 @@ https://github.com/tensorflow/models/blob/master/research/object_detection/infer
 #export PYTHONPATH="$PYTHONPATH:$HOME/git/cameratraps:$HOME/git/ai4eutils:$HOME/git/yolov5"
 # python detection/run_detector.py "/home/vic/vic_data/dlclive4mega/md_v5b.0.0.pt" --image_file "/home/vic/vic_data/dlclive4mega/africanwilddog.jpeg" --threshold 0.1
 #but actually we just need to get the outputs, so don't need to integrate it in here
-# python detection/run_detector_batch.py "/home/vic/vic_data/dlclive4mega/md_v5b.0.0.pt" "/home/vic/vic_data/dlclive4mega/africanwilddog.jpeg" "/home/vic/vic_data/dlclive4mega/output.json" -you need this in order to get the output json
+# python detection/run_detector_batch.py "/home/vic/vic_data/dlclive4mega/models/md_v5b.0.0.pt" "/home/vic/vic_data/dlclive4mega/camtrap" "/home/vic/vic_data/dlclive4mega/output2.json" -you need this in order to get the output json
+# batch does not visualize, so in order to do that you need to run:
+# python /home/vic/git/cameratraps/visualization/visualize_detector_output.py "/home/vic/vic_data/dlclive4mega/output2.json" "/home/vic/vic_data/dlclive4mega/camtrap" --confidence 0.8 --images_dir "/home/vic/vic_data/dlclive4mega/camtrap"
 
 # import sys
 # for p in sys.path:
@@ -54,7 +56,7 @@ https://github.com/tensorflow/models/blob/master/research/object_detection/infer
 
 import argparse
 import glob
-import os
+import oscd
 import statistics
 import sys
 import time
