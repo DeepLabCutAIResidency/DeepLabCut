@@ -131,9 +131,10 @@ plt.ylim([5,10])
 plt.show()
 ####################################################
 # %%
-# add results to dataframe and save h5 file  ---- print warning if overwriting!
-df.insert(0,"I-frame",bool_iframes_in_df)
+# add results to dataframe ----- maybe save at a different level (right now scorer??)
+df.insert(0,"I-frame",bool_iframes_in_df) 
 
+# save h5 file  ---- print warning if overwriting!
 df.to_hdf(labelled_data_h5file.split('.h5')[0]+'_iframes.h5',
           "df_with_missing",
           mode="w")
