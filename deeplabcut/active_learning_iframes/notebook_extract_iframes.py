@@ -23,7 +23,7 @@ def extract_i_frames(video_path):
 ###################################################
 # %% 
 # Input params
-project_dir = '/home/sofia/datasets/Horses-Byron-2019-05-08'
+project_dir = '/home/sofia/datasets/Horse10_ood/Horses-Byron-2019-05-08'
 labelled_data_h5file = \
     os.path.join(project_dir,'training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5') # h5 file
 
@@ -38,16 +38,17 @@ video_temp_path = '/home/sofia/datasets/temp.avi'
 df = pd.read_hdf(labelled_data_h5file)
 # ----> ensure frames per video are sorted? assuming name corresponds to frame number
 
-list_paths_to_files = [os.path.join(project_dir,*el) for el in df.index]
+list_paths_to_files = [os.path.join(project_dir,el) for el in df.index]
 # when making list with unique elements, ensure they are sorted in the same \
 # order as in original!
-l=[os.path.join(v) for u,v,w in df.index]
+l=[el.split('/')[1] for el in df.index]
 list_subdirs = sorted(set(l),key=l.index)
 
 # map subdirectory to files inside it ---maybe specify extension?
 map_subdirs_to_files = dict()
 for d in list_subdirs:
-    map_subdirs_to_files[d]  = [os.path.join(project_dir,u,v,w) for u,v,w in df.index if d==v] # ---improve this bit
+    map_subdirs_to_files[d]  = [os.path.join(project_dir,el) for el in df.index if d==el.split('/')[1]] # ---improve this bit
+    #[os.path.join(project_dir,u,v,w) for u,v,w in df.index if d==v] # ---improve this bit
     
 # labeled_data_dir = '/home/sofia/datasets/Horses-Byron-2019-05-08/labeled-data'
 # list_subdirs = os.listdir(labeled_data_dir)
@@ -57,7 +58,7 @@ for d in list_subdirs:
 # %% Extract i-frames per video
 # loop thru directories (one directory=one video)
 bool_iframes_in_df = [False]*len(df)
-list_step_btw_iframes = []
+map_subdirs_to_step_btw_iframes = dict()
 map_subdirs_to_iframes_fraction = dict()
 for d in list(map_subdirs_to_files.keys()):
 
@@ -82,7 +83,7 @@ for d in list(map_subdirs_to_files.keys()):
     # extract i-frames (idcs relative to video)
     idcs_i_frames_wrt_video = extract_i_frames(video_temp_path)
 
-    list_step_btw_iframes.append(np.diff(np.asarray(idcs_i_frames_wrt_video))) # print step between iframes
+    map_subdirs_to_step_btw_iframes[d] = (np.diff(np.asarray(idcs_i_frames_wrt_video))) # print step between iframes
     map_subdirs_to_iframes_fraction[d] = (len(idcs_i_frames_wrt_video),
                                           len(map_subdirs_to_files[d]),
                                           len(idcs_i_frames_wrt_video)/len(map_subdirs_to_files[d]))

@@ -93,9 +93,9 @@ for j in range(len(train_idcs)):
 ###############################################
 # # Create training dataset
 # # based on i-frames from (shuffles? randomly sample a fraction of i-frames?)   
-# create_training_dataset(
-#     config_path,
-#     num_shuffles=NUM_SHUFFLES) # augmenter_type=None, posecfg_template=-----> pass baseline config?,
+create_training_dataset(
+    config_path,
+    num_shuffles=NUM_SHUFFLES) # augmenter_type=None, posecfg_template=-----> pass baseline config?,
 
 
 
