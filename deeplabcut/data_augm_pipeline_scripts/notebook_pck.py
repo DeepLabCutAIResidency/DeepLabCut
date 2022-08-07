@@ -21,15 +21,16 @@ from deeplabcut.utils import auxiliaryfunctions
 
 #########################################
 # Input params
-config_path = '/home/sabrina/Horses-Byron-2019-05-08/config.yaml'#'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
+config_path = '/media/data/stinkbugs-DLC-2022-07-15_COVERING/config.yaml'#'/home/sofia/datasets/Horses-Byron-2019-05-08/config.yaml' #/home/sabrina/Horses-Byron-2019-05-08/config.yaml'#'/Users/user/Desktop/sabris-mouse/sabris-mouse-nirel-2022-07-06/config.yaml'
 # NUM_SHUFFLES=1 # this is an input to create_training_dataset but I think it is not saved anywhere
 
-TRAIN_ITERATION = 0 # iteration in terms of refinement of frames for training
-TRAINING_SET_INDEX = 0
-SUBDIR_STR = 'data_augm_00_baseline'
+TRAIN_ITERATION = 1 #0 # iteration in terms of refinement of frames for training
+TRAINING_SET_INDEX = 0 # 3
+SUBDIR_STR = 'stinkbugs-DLC-2022-07-15_COVERING_200' #'data_augm_00_baseline'
 
-length_for_normalisation_in_px = 18 # pixels,  for Horses: median_eye2nose_length_px
-pck_thresh_fraction = 0.2
+# scale for stinkbugs: notebook_convex_hull at /media/data/stinkbugs-DLC-2022-07-15_COVERING/labeled-data/cam1_04-Mar-21_20-27-56/img50.png
+length_for_normalisation_in_px = 220  #18 # pixels,  for Horses: median_eye2nose_length_px
+pck_thresh_fraction = 0.05
 pck_thresh_in_pixels = pck_thresh_fraction*length_for_normalisation_in_px #------
 
 ##########################################
@@ -195,7 +196,7 @@ for i,shuffle in enumerate(list_shuffle_numbers):
                   linestyle='--',
                   color=colors[i])                 
 plt.xticks(rotation=45,fontsize = 10, )
-plt.ylim((0.05,0.3))
+# plt.ylim((0.008,0.02))
 plt.grid()
 plt.show()
 
@@ -265,7 +266,7 @@ for i,shuffle in enumerate(list_shuffle_numbers):
                   linestyle='--',
                   color=colors[i])                 
 plt.xticks(rotation=45,fontsize = 10, )
-plt.ylim((0.7,1))
+# plt.ylim((0.7,1))
 plt.legend(loc='lower right')
 plt.grid()
 plt.show()
@@ -306,3 +307,5 @@ for ax in np_axes_per_row:
 # dict_pck
 # dict_px_error_by_bodypart = dict()
 # dict_px_error_total = dict()
+
+# %%
