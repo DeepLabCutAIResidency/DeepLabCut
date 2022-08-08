@@ -24,7 +24,8 @@ import numpy as np
 # Input params
 # - config, iteration=0, 50/50 split, shuffle=1 
 
-path_to_shuffle2_pickle = '/home/sofia/datasets/Horses-Byron-2019-05-08/data_augm_00_baseline/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle1.pickle'
+path_to_shuffle2_pickle = \
+'/home/sofia/datasets/Horse10_ood/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle1.pickle'
 #'/media/data/stinkbugs-DLC-2022-07-15/data_augm_00_baseline/training-datasets/iteration-1/UnaugmentedDataSet_stinkbugsJul15/Documentation_data-stinkbugs_80shuffle0.pickle'
 # config_path = '/home/sofia/datasets/Horses-Byron-2019-05-08/config.yaml' 
 
@@ -40,7 +41,7 @@ path_to_shuffle2_pickle = '/home/sofia/datasets/Horses-Byron-2019-05-08/data_aug
 #     os.path.join(baseline_parent_dir,'/dlc-models/iteration-0/HorsesMay8-trainset50shuffle1/train/snapshot-200000')
 
 ## Set other params
-NUM_SHUFFLES=3
+# NUM_SHUFFLES=3
 
 ##################################################################
 # %%
@@ -61,7 +62,8 @@ with open(path_to_shuffle2_pickle, "rb") as f:
 # %%
 ###############################################
 # Check if train and test idcs of shuffle 1 are all from the same 10 horses
-df = pd.read_hdf('/home/sofia/datasets/Horses-Byron-2019-05-08/data_augm_00_baseline/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
+df = pd.read_hdf('/home/sofia/datasets/Horse10_ood/Horses-Byron-2019-05-08/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
+    #'/home/sofia/datasets/Horses-Byron-2019-05-08/data_augm_00_baseline/training-datasets/iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
 
 list_horses_train_shuffle1 = list(set([df.iloc[t,:].name[1] for t in train_idcs])) #list(set([df.iloc[t,:].name[1] for t in train_idcs]))
 list_horses_train_shuffle1.sort()
