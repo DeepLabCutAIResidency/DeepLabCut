@@ -80,6 +80,9 @@ for bp in list_bodyparts_to_analyse: #['head']: #list_bodyparts:
         # total_variation_dict[(model_str,bp,'y')] = cumsum_abs_diff_xy_coords[-1,1]
         # total_variation_dict[model_str].update({bp:{'x': cumsum_abs_diff_xy_coords[-1,0],
         #                                             'y': cumsum_abs_diff_xy_coords[-1,1]}})
+
+        # Compute median absolute deviation
+        # np.median(np.absolute(x - np.median(x)))
          
         if flag_plot_per_bdprt:
             ### Fig trajectory in xy space       
@@ -141,7 +144,7 @@ for bp in list_bodyparts_to_analyse: #['head']: #list_bodyparts:
 plt.show()
 
 # %%
-##########################################
+##########################################################
 # Plot TV per bodypart
 
 df_TV_per_bdprt = pd.DataFrame(total_variation_dict, 
@@ -159,5 +162,37 @@ for c in ['x','y']:
                     y='TV',
                     hue='model',
                     size = 10)
-    # plt.ylim([0,100_000])
+    # sns.lineplot(data=df_to_plot[df_to_plot['coords']==c],
+    #                 x='bodyparts',
+    #                 y='TV',
+    #                 hue='model',
+    #                 size = 10)
+    plt.title('{}-coord [zoom]'.format(c))
+    plt.xticks(rotation = 45) 
+    plt.ylabel('total variation (px)')
+    # plt.grid(which='minor', axis='y', linestyle='solid', color='black', alpha=0.2)
+    plt.grid(which='major', axis='y', linestyle='solid', color='black', alpha=0.5)
+    plt.ylim([0,500_000])
+
+for c in ['x','y']:
+    plt.figure(figsize=(12,10))
+    sns.swarmplot(data=df_to_plot[df_to_plot['coords']==c],
+                    x='bodyparts',
+                    y='TV',
+                    hue='model',
+                    size = 10)
+    # sns.lineplot(data=df_to_plot[df_to_plot['coords']==c],
+    #                 x='bodyparts',
+    #                 y='TV',
+    #                 hue='model',
+    #                 size = 10)
+    plt.title('{}-coord [zoom]'.format(c))
+    plt.ylabel('total variation (px)')
+    plt.xticks(rotation = 45) 
+    # plt.grid(which='minor', axis='y', linestyle='solid', color='black', alpha=0.2)
+    plt.grid(which='major', axis='y', linestyle='solid', color='black', alpha=0.5)
+    plt.ylim([0,80_000])
+
 # %%
+##########################################################
+# Compute paired test
