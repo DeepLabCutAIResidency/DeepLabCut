@@ -22,6 +22,8 @@ df_grayscale = pd.read_hdf(path_h5_grayscale)
 df_baseline = df_baseline.droplevel('scorer',axis=1)
 df_grayscale = df_grayscale.droplevel('scorer',axis=1)
 
+# np.any(np.isnan(np.asarray(df_baseline)))
+# Right now using all points regardless of llk: plt.plot(df_baseline['head']['likelihood'])
 #%%
 ##########################################
 # Get list of bodyparts
