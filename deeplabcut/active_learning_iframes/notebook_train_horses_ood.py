@@ -4,74 +4,138 @@ import re
 import argparse
 import yaml
 import deeplabcut
+import pickle
+import pandas as pd
 
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_training_dataset
 
-# %%
 ######################################################
-### Set config path
-config_path = '/home/sofia/datasets/Horse10_ood copy/Horses-Byron-2019-05-08/config.yaml' 
+# %% Read data from each pickle from original OOD setting
 
-## Set other params
+# from h5 file
+path_to_h5_file_orig = '/home/sofia/datasets/Horse10_OOD/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
+df = pd.read_hdf(path_to_h5_file_orig)
+
+
 NUM_SHUFFLES=3
+list_train_idcs_per_shuffle = []
+list_test_idcs_per_shuffle = []
+for sh in range(1,NUM_SHUFFLES+1):
 
-GPU_TO_USE = 0
-TRAINING_SET_INDEX = 3 # default;
-MAX_SNAPSHOTS = 10
-DISPLAY_ITERS = 1000 # display loss every N iters; one iter processes one batch
-MAX_ITERS = 200_000
-SAVE_ITERS = 50000 # save snapshots every n iters
-TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
+    # read pickles from original!
+    path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_OOD/Horses-Byron-2019-05-08/training-datasets/'+ \
+                             'iteration-0/UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle{}.pickle'\
+                             .format(sh)
 
+    # read train/test idcs from pickle
+    with open(path_to_shuffle_pickle, "rb") as f:
+        pickledata = pickle.load(f)
+        
+        data = pickledata[0] # num_train_images = len(raw_data) 4041 ----why doesnt it match other sizes?
+        train_idcs = pickledata[1] # 4057
+        test_idcs = pickledata[2] #  4057
+        split_fraction = pickledata[3] # 
+        
+        # append to lists
+        list_train_idcs_per_shuffle.append(train_idcs)
+        list_test_idcs_per_shuffle.append(test_idcs)
+
+    # Check if train idcs of shuffle x are all from 10 horses
+    if type(df.iloc[0,:].name) is tuple:
+        list_horses_train_shuffle1 = list(set([df.iloc[t,:].name[1] for t in train_idcs]))  # df.iloc[t,:].name[1] 
+    else:
+        list_horses_train_shuffle1 = list(set([df.iloc[t,:].name.split('/')[1] for t in train_idcs]))  # df.iloc[t,:].name[1] 
+    list_horses_train_shuffle1.sort()
+    print('Num horses in train idcs shuffle {} = {}'. format(sh,
+                                                            len(list_horses_train_shuffle1)))#----shouldnt this be 10?
+
+# print list of idcs
+print(len(list_train_idcs_per_shuffle))
+print(len(list_test_idcs_per_shuffle))
+
+[len(x)/len(y) for (x,y) in zip(list_train_idcs_per_shuffle,
+                                list_test_idcs_per_shuffle)]
+# for sh in range(3):
+#     plt.plot(list_train_idcs_per_shuffle[sh],'.',label='shuffle {}'.format(sh))
+#     plt.scatter(range(0,len(list_test_idcs_per_shuffle[sh])),
+#                 list_test_idcs_per_shuffle[sh],
+#                 10,
+#                 c='b',label='shuffle {}'.format(sh))
+# plt.show()
 # %%
-#####################################################
-# Create training dataset---do not overwrite!
+# #####################################################################################################
+# Create training dataset for OOD setting
+# - use idcs from pickle
+# - use adam template for pose_cfg
+
+# cp -r /home/sofia/datasets/Horse10_OOD /home/sofia/datasets/Horse10_OOD_modif
+# change TrainingFraction!
+
+config_path = '/home/sofia/datasets/Horse10_OOD_modif/Horses-Byron-2019-05-08/config.yaml' 
+pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
+
 create_training_dataset(
     config_path,
     num_shuffles=NUM_SHUFFLES,
-    userfeedback=True) # augmenter_type=None, posecfg_template=None,
+    userfeedback=False,
+    net_type='resnet_50',
+    trainIndices=list_train_idcs_per_shuffle,
+    testIndices=list_test_idcs_per_shuffle,
+    posecfg_template=pose_cfg_yaml_adam_path,
+    ) # augmenter_type=None, posecfg_template=None,
 
+    # Shuffles=None,
+    # windows2linux=False,
+    # userfeedback=False,
+    # trainIndices=None,
+    # testIndices=None,
+    # net_type=None,
+    # augmenter_type=None,
+    # posecfg_template=None,
+###########################################
 # %%
 #############################################
-# Edit train config
+# Check horses per shuffle in newly created dataset
 
-# GPU growth
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+# from h5 file
+path_to_h5_file_modif = '/home/sofia/datasets/Horse10_OOD_modif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
+df = pd.read_hdf(path_to_h5_file_modif)
 
-# Adam
-train_edits_dict = {'optimizer': 'adam', #'adam',
-                    'batch_size': 8, #16,
-                    'multi_step': [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]}
 
-# get path to train config for each shuffle
-for sh in range(NUM_SHUFFLES):
-    one_train_pose_config_file_path,\
-    _,_ = deeplabcut.return_train_network_path(config_path,
-                                                shuffle=sh,
-                                                trainingsetindex=TRAINING_SET_INDEX, 
-                                                ) # modelprefix=modelprefix
-    # add changes 
-    edit_config(str(one_train_pose_config_file_path), 
-                train_edits_dict)
+NUM_SHUFFLES=3
+list_train_idcs_per_shuffle = []
+list_test_idcs_per_shuffle = []
+for sh in range(1,NUM_SHUFFLES+1):
+
+    # read pickles from original!
+    path_to_shuffle_pickle_modif = '/home/sofia/datasets/Horse10_OOD_modif/Horses-Byron-2019-05-08/training-datasets/'+ \
+                                    'iteration-0/UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle{}.pickle'\
+                                    .format(sh)
+
+    # read train/test idcs from pickle
+    with open(path_to_shuffle_pickle_modif, "rb") as f:
+        pickledata = pickle.load(f)
+        
+        data = pickledata[0] # num_train_images = len(raw_data) 4041 ----why doesnt it match other sizes?
+        train_idcs = pickledata[1] # 4057
+        test_idcs = pickledata[2] #  4057
+        split_fraction = pickledata[3] # 
+        
+        # append to lists
+        list_train_idcs_per_shuffle.append([train_idcs])
+        list_test_idcs_per_shuffle.append([test_idcs])
+
+    # Check if train idcs of shuffle x are all from 10 horses
+    if type(df.iloc[0,:].name) is tuple:
+        list_horses_train_shuffle1 = list(set([df.iloc[t,:].name[1] for t in train_idcs]))  
+    else:
+        list_horses_train_shuffle1 = list(set([df.iloc[t,:].name.split('/')[1] for t in train_idcs]))   
+    list_horses_train_shuffle1.sort()
+    print('Num horses in train idcs shuffle {} = {}'. format(sh,
+                                                            len(list_horses_train_shuffle1)))#----shouldnt this be 10?
+
 
 # %%
-#############################################
-# Train
-## Train each shuffle
-for sh in range(NUM_SHUFFLES):
-    deeplabcut.train_network(config_path, # config.yaml, common to all models
-                                shuffle=sh,
-                                trainingsetindex=TRAINING_SET_INDEX,
-                                max_snapshots_to_keep=MAX_SNAPSHOTS,
-                                displayiters=DISPLAY_ITERS,
-                                maxiters=MAX_ITERS,
-                                saveiters=SAVE_ITERS,
-                                gputouse=GPU_TO_USE,
-                                allow_growth=True,) # modelprefix=modelprefix
-
-
-
-# %%
-#############################################
-# Input
