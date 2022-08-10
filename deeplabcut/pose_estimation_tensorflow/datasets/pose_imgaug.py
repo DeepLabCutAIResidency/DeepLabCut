@@ -35,6 +35,7 @@ from .utils import DataItem, Batch
 class ImgaugPoseDataset(BasePoseDataset):
     def __init__(self, cfg):
         super(ImgaugPoseDataset, self).__init__(cfg)
+        self._n_kpts = len(cfg["all_joints_names"])
         self.data = self.load_dataset()
         self.batch_size = cfg.get("batch_size", 1)
         self.num_images = len(self.data)
@@ -356,7 +357,9 @@ class ImgaugPoseDataset(BasePoseDataset):
         batch_images = []
         batch_joints = []
         joint_ids = []
+        inds_visible = []
         data_items = []
+
         # Scale is sampled only once to transform all of the images of a batch into same size.
         scale = self.sample_scale()
 
@@ -394,15 +397,20 @@ class ImgaugPoseDataset(BasePoseDataset):
             )
 
             if self.has_gt:
-                joints = np.copy(data_item.joints)
+                joints = data_item.joints
+                kpts = np.zeros((self._n_kpts, 2))
+                for n, x, y in joints[0]:
+                    kpts[int(n)] = x, y
                 joint_id = [person_joints[:, 0].astype(int) for person_joints in joints]
-                joint_points = [person_joints[:, 1:3] for person_joints in joints]
+                #joint_points = [person_joints[:, 1:3] for person_joints in joints]
                 joint_ids.append(joint_id)
-                batch_joints.append(np.array(joint_points)[0])
+                batch_joints.append(kpts)
+                inds_visible.append(np.flatnonzero(np.all(kpts != 0, axis=1)))
+
             batch_images.append(image)
         sm_size = np.ceil(target_size / (stride * 2)).astype(int) * 2
         assert len(batch_images) == self.batch_size
-        return batch_images, joint_ids, batch_joints, data_items, sm_size, target_size
+        return batch_images, joint_ids, batch_joints, inds_visible, data_items, sm_size, target_size
 
     def get_scmap_update(self, joint_ids, joints, data_items, sm_size, target_size):
         part_score_targets, part_score_weights, locref_targets, locref_masks = (
@@ -453,6 +461,7 @@ class ImgaugPoseDataset(BasePoseDataset):
                 batch_images,
                 joint_ids,
                 batch_joints,
+                inds_visible,
                 data_items,
                 sm_size,
                 target_size,
@@ -460,6 +469,14 @@ class ImgaugPoseDataset(BasePoseDataset):
             pipeline = self.build_augmentation_pipeline(
                 height=target_size[0], width=target_size[1], apply_prob=0.5
             )
+
+            batch_joints_valid = []
+
+            for joints, ids, visible in zip(batch_joints, joint_ids, inds_visible):
+                joints = joints[visible]    
+                batch_joints_valid.append(joints)
+
+
             batch_images, batch_joints = pipeline(
                 images=batch_images, keypoints=batch_joints
             )
@@ -476,7 +493,7 @@ class ImgaugPoseDataset(BasePoseDataset):
             batch = {Batch.inputs: np.array(batch_images).astype(np.float64)}
             if self.has_gt:
                 scmap_update = self.get_scmap_update(
-                    joint_ids, batch_joints, data_items, sm_size, image_shape
+                    joint_ids, batch_joints_valid, data_items, sm_size, image_shape
                 )
                 batch.update(scmap_update)
 
