@@ -24,8 +24,7 @@ python data_augm_train_all_models.py /Users/user/Desktop/sabris-mouse/sabris-mou
 Contributors: Jonas, Sofia
 """
 
-import os
-import sys
+import os, sys
 import deeplabcut
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 import re 
@@ -79,7 +78,8 @@ def train_all_shuffles(config_path, # config.yaml, common to all models
 
     ##########################################################
     ### Train every shuffle for this model
-    for sh in list_shuffle_numbers:
+    # pdb.set_trace()
+    for sh in list_shuffle_numbers: #[list_shuffle_numbers[0]]: #----------------TEMPORARY-Hack!!! To train only first shuffle!
         ## Initialise dict with additional edits to train config: initial weights if provided and optimizer
         train_edits_dict = {}
 

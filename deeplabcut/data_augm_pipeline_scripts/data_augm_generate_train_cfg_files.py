@@ -204,7 +204,7 @@ if __name__ == "__main__":
         base_test_pose_config_file_path_TEMP,\
         _ = deeplabcut.return_train_network_path(config_path,
                                                 shuffle=shuffle_number,
-                                                trainingsetindex=0)  # base_train_pose_config_file
+                                                trainingsetindex=TRAINING_SET_INDEX)  # base_train_pose_config_file
         list_base_train_pose_config_file_paths.append(base_train_pose_config_file_path_TEMP)
         list_base_test_pose_config_file_paths.append(base_test_pose_config_file_path_TEMP)
 
