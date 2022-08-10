@@ -8,23 +8,23 @@ from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 
 project_folder = "/home/jonas2/DLC_files/projects/"
 
-deeplabcut.create_new_project(
-            project='geneva_protocol_paper_austin_2020_bat_data',
-            experimenter='DLC',
-            videos=['/home/jonas2/DLC_files/projects/dummyVideos/'],
-            working_directory=project_folder
-        )
+#deeplabcut.create_new_project(
+#            project='geneva_protocol_paper_austin_2020_bat_data',
+#            experimenter='DLC',
+#            videos=['/home/jonas2/DLC_files/projects/dummyVideos/'],
+#            working_directory=project_folder
+#        )
 
 #%%%
 config_path = "/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03/config.yaml"
 #%%%
-deeplabcut.convertcsv2h5(config_path, scorer= 'DLC', userfeedback=False)
+#deeplabcut.convertcsv2h5(config_path, scorer= 'DLC', userfeedback=False)
 
 # %%
-deeplabcut.check_labels(config_path)
+#deeplabcut.check_labels(config_path)
 # %%
 # Dummy training dataset to get indexes and so on from later
-deeplabcut.create_training_dataset(config_path, Shuffles=[99])
+#deeplabcut.create_training_dataset(config_path, Shuffles=[99])
 
 #%%
 import pandas as pd
@@ -33,7 +33,7 @@ image_paths = df.index.to_list()
 
 
 # %%
-# train on A, shuffle 1
+# train on A, shuffle 13
 test_inds = []
 train_inds = []
 for i, path in enumerate(image_paths):
@@ -44,7 +44,7 @@ for i, path in enumerate(image_paths):
 
 deeplabcut.create_training_dataset(
     config_path,
-    Shuffles=[1],
+    Shuffles=[13],
     trainIndices=[train_inds],
     testIndices=[test_inds],
     net_type="resnet_101",
@@ -52,7 +52,7 @@ deeplabcut.create_training_dataset(
 )
 
 # %%
-# train on A+25, shuffle 2
+# train on A+25, shuffle 14
 test_inds = []
 train_inds = []
 for i, path in enumerate(image_paths):
@@ -65,14 +65,14 @@ for i, path in enumerate(image_paths):
 
 deeplabcut.create_training_dataset(
     config_path,
-    Shuffles=[2],
+    Shuffles=[14],
     trainIndices=[train_inds],
     testIndices=[test_inds],
     net_type="resnet_101",
     augmenter_type="imgaug"
 )
 # %%
-# train on A+B, shuffle 3
+# train on A+B, shuffle 15
 test_inds = []
 train_inds = []
 for i, path in enumerate(image_paths):
@@ -92,7 +92,7 @@ deeplabcut.create_training_dataset(
     augmenter_type="imgaug"
 )
 # %%
-# train on A+B+25, shuffle 4
+# train on A+B+25, shuffle 16
 test_inds = []
 train_inds = []
 for i, path in enumerate(image_paths):
@@ -107,7 +107,7 @@ for i, path in enumerate(image_paths):
 
 deeplabcut.create_training_dataset(
     config_path,
-    Shuffles=[4],
+    Shuffles=[16],
     trainIndices=[train_inds],
     testIndices=[test_inds],
     net_type="resnet_101",
@@ -115,182 +115,15 @@ deeplabcut.create_training_dataset(
 )
 
 # %% ##################################################################################
-# INTERMEDIATE SUPERVISION TRUE AND MULTISTAGE FALSE
 
 
 
-# %%
-# train on A, shuffle 5
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[5],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-
-# %%
-# train on A+25, shuffle 6
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_25_ref"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[6],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-# %%
-# train on A+B, shuffle 7
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_B"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[7],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-# %%
-# train on A+B+25, shuffle 8
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_B"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_25_ref"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[8],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-
-# %% ##################################################################################
-# INTERMEDIATE SUPERVISION FALSE AND MULTISTAGE TRUE
-
-# %%
-# train on A, shuffle 9
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[9],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-
-# %%
-# train on A+25, shuffle 10
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_25_ref"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[10],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-# %%
-# train on A+B, shuffle 11
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_B"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[11],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
-# %%
-# train on A+B+25, shuffle 12
-test_inds = []
-train_inds = []
-for i, path in enumerate(image_paths):
-    if str(path[1]).endswith("_A"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_B"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_25_ref"):
-        train_inds.append(i)
-    elif str(path[1]).endswith("_50_test"):
-        test_inds.append(i)
-
-deeplabcut.create_training_dataset(
-    config_path,
-    Shuffles=[12],
-    trainIndices=[train_inds],
-    testIndices=[test_inds],
-    net_type="resnet_101",
-    augmenter_type="imgaug"
-)
 
 # %% Create model folders
 
-model_number = 0
+model_number = 1
 modelprefix_pre = 'data_augm'
-daug_str = 'none'
+daug_str = 'fliplr'
 TRAINING_SET_INDEX = 0
 TRAIN_ITERATION = 0
 
@@ -301,8 +134,8 @@ project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_model
 training_datasets_path = os.path.join(project_path, "training-datasets")
 #%%
 # Get shuffles
-shuffles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-trainingsetindices = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]
+shuffles = [13]
+trainingsetindices = [0]
 # %%
 # Get train and test pose config file paths from base project, for each shuffle
 list_base_train_pose_config_file_paths = []
@@ -363,7 +196,7 @@ edits_dict["gaussian_blur_params"] = {"sigma": (0.5, 4.0)}
 edits_dict["scale_jitter_lo"] = .5
 edits_dict["scale_jitter_up"] = 1.25
 edits_dict["symmetric_pairs"] = (0, 14), (1, 12), (2, 13), (3, 11), (4, 9), (5, 10)
-edits_dict["fliplr"] = False
+edits_dict["fliplr"] = True
 
 ## Initialise dict with additional edits to train config: optimizer
 train_edits_dict = {}
@@ -375,27 +208,27 @@ train_edits_dict.update({'optimizer': dict_optimizer['optimizer'], #'adam',
     'multi_step': dict_optimizer['multi_step']}) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
 
 # %%
-for j, shuffle in enumerate(shuffles):
+for j, shuffle in enumerate(shuffles):    
     edit_config(str(list_train_pose_config_path_per_shuffle[j]), edits_dict)
     edit_config(str(list_train_pose_config_path_per_shuffle[j]),
                         train_edits_dict)
-    if 1 <= shuffle <= 4:
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'intermediate_supervision': False})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'multi_stage': False})
-
-    elif 5 <= shuffle <= 8:
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'intermediate_supervision': True})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'multi_stage': False})
-
-    elif 9 <= shuffle <= 12:
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'intermediate_supervision': False})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'multi_stage': True})
+#    if 1 <= shuffle <= 4:
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'intermediate_supervision': False})
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'multi_stage': False})
+#
+#    elif 5 <= shuffle <= 8:
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'intermediate_supervision': True})
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'multi_stage': False})
+#
+#    elif 9 <= shuffle <= 12:
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'intermediate_supervision': False})
+#        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
+#                {'multi_stage': True})
 
 
 # %%
