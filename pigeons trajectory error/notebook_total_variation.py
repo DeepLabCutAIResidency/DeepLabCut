@@ -61,9 +61,9 @@ for bp in list_bodyparts_to_analyse: #['head']: #list_bodyparts:
     # initialise figures
     # fig1,ax1_lst = plt.subplots(1,len(dict_bp_xy_per_model))
     # fig1.suptitle(bp)
-    fig2,ax2_lst = plt.subplots(1,len(dict_bp_xy_per_model)) 
+    fig2,ax2_lst = plt.subplots(1,len(dict_bp_xy_per_model),figsize=(7.5, 7.5)) 
     fig2.suptitle(bp)
-    fig3,ax3_lst = plt.subplots(1,bp_xy_baseline_np.shape[1]) 
+    fig3,ax3_lst = plt.subplots(1,bp_xy_baseline_np.shape[1], figsize=(7.5, 7.5)) 
     fig3.suptitle(bp)
 
     total_variation_dict[(bp,'x')] = []
@@ -169,12 +169,12 @@ for c in ['x','y']:
     #                 y='TV',
     #                 hue='model',
     #                 size = 10)
-    plt.title('{}-coord [zoom]'.format(c))
+    plt.title('{}-coord'.format(c))
     plt.xticks(rotation = 45) 
     plt.ylabel('total variation (px)')
     # plt.grid(which='minor', axis='y', linestyle='solid', color='black', alpha=0.2)
     plt.grid(which='major', axis='y', linestyle='solid', color='black', alpha=0.5)
-    plt.ylim([0,500_000])
+    # plt.ylim([0,500_000])
 
 for c in ['x','y']:
     plt.figure(figsize=(12,10))
