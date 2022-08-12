@@ -357,7 +357,6 @@ class ImgaugPoseDataset(BasePoseDataset):
         batch_images = []
         batch_joints = []
         joint_ids = []
-        inds_visible = []
         data_items = []
 
         # Scale is sampled only once to transform all of the images of a batch into same size.
@@ -398,19 +397,17 @@ class ImgaugPoseDataset(BasePoseDataset):
 
             if self.has_gt:
                 joints = data_item.joints
-                kpts = np.zeros((self._n_kpts, 2))
+                kpts = np.full((self._n_kpts, 2), np.nan)
+                joint_id = [np.arange(self._n_kpts)]
                 for n, x, y in joints[0]:
                     kpts[int(n)] = x, y
-                joint_id = [person_joints[:, 0].astype(int) for person_joints in joints]
-                #joint_points = [person_joints[:, 1:3] for person_joints in joints]
                 joint_ids.append(joint_id)
                 batch_joints.append(kpts)
-                inds_visible.append(np.flatnonzero(np.all(kpts != 0, axis=1)))
 
             batch_images.append(image)
         sm_size = np.ceil(target_size / (stride * 2)).astype(int) * 2
         assert len(batch_images) == self.batch_size
-        return batch_images, joint_ids, batch_joints, inds_visible, data_items, sm_size, target_size
+        return batch_images, joint_ids, batch_joints, data_items, sm_size, target_size
 
     def get_scmap_update(self, joint_ids, joints, data_items, sm_size, target_size):
         part_score_targets, part_score_weights, locref_targets, locref_masks = (
@@ -461,25 +458,41 @@ class ImgaugPoseDataset(BasePoseDataset):
                 batch_images,
                 joint_ids,
                 batch_joints,
-                inds_visible,
                 data_items,
                 sm_size,
                 target_size,
             ) = self.get_batch()
+
             pipeline = self.build_augmentation_pipeline(
                 height=target_size[0], width=target_size[1], apply_prob=0.5
             )
 
-            batch_joints_valid = []
-
-            for joints, ids, visible in zip(batch_joints, joint_ids, inds_visible):
-                joints = joints[visible]    
-                batch_joints_valid.append(joints)
-
-
             batch_images, batch_joints = pipeline(
                 images=batch_images, keypoints=batch_joints
             )
+
+            image_shape = np.array(batch_images).shape[1:3]
+            
+            batch_joints_valid = []
+            joint_ids_valid = []
+            for joints, ids in zip(batch_joints, joint_ids):
+                #invisible joints are represented by nans
+                mask = ~np.isnan(joints[:,0])
+                joints = joints[mask,:]
+                ids = ids[0][mask]
+                inside = np.logical_and.reduce(
+                    (
+                        joints[:, 0] < image_shape[1],
+                        joints[:, 0] > 0,
+                        joints[:, 1] < image_shape[0],
+                        joints[:, 1] > 0,
+                    )
+                )
+
+                batch_joints_valid.append(joints[inside])
+                joint_ids_valid.append([ids[inside]])
+            
+
             # If you would like to check the augmented images, script for saving
             # the images with joints on:
             # import imageio
@@ -489,11 +502,10 @@ class ImgaugPoseDataset(BasePoseDataset):
             #    im = kps.draw_on_image(batch_images[i])
             #    imageio.imwrite('some_location/augmented/'+str(i)+'.png', im)
 
-            image_shape = np.array(batch_images).shape[1:3]
             batch = {Batch.inputs: np.array(batch_images).astype(np.float64)}
             if self.has_gt:
                 scmap_update = self.get_scmap_update(
-                    joint_ids, batch_joints_valid, data_items, sm_size, image_shape
+                    joint_ids_valid, batch_joints_valid, data_items, sm_size, image_shape
                 )
                 batch.update(scmap_update)
 
