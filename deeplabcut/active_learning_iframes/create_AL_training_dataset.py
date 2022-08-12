@@ -1,11 +1,8 @@
 '''
-1- Download horse10.tar.gz and extract in 'Horses10_AL2'
-    2- Copy pickle file with idcs to 'Horses10_AL2' --not req
-3- Rename 'Horses-Byron-2019-05-08/training-datasets' to 'Horses-Byron-2019-05-08/training-datasets_'
-    4- Edit config?? -- I think not req
-        default_net_type: resnet_50??
+1- Download horse10.tar.gz and extract in 'Horses10_AL2': tar -xvzf horse10.tar.gz -C /home/sofia/datasets/Horse10_AL3
 
-4- Make subdirs that are copy of parent dir with suffix _AL_unif{}, where {}=n frames from active learning
+
+3- Make subdirs that are copy of parent dir with suffix _AL_unif{}, where {}=n frames from active learning
 
 5 - Run create_training_dataset in every subdir
     - copy h5 file and csv from training-datasets_
@@ -39,8 +36,8 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
 
 
-reference_dir_path = '/home/sofia/datasets/Horse10_AL2/Horses-Byron-2019-05-08'
-path_to_pickle_w_base_idcs = '/home/sofia/datasets/Horse10_AL2/horses_AL_train_test_idcs_split.pkl'
+reference_dir_path = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08'
+path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
 
 model_subdir_suffix = '_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
 list_n_AL_frames = [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
@@ -48,7 +45,7 @@ list_n_AL_frames = [0,10,50,100,500] # number of frames to sample from AL test s
 ###########################################
 ###########################################################
 # %%
-# Load train/test indices
+# Load train/test base indices from pickle
 with open(path_to_pickle_w_base_idcs,'rb') as file:
     # pickle.load(file)
     [map_shuffle_id_to_train_idcs,
@@ -61,11 +58,17 @@ with open(path_to_pickle_w_base_idcs,'rb') as file:
 ## Create  dir structure for each model
 # create subdir for this model
 
+# rename training-datasets folder?
+
 # list of models = list of number of active learning frames to add to train set (& remove from test set)
 for n_AL_samples in list_n_AL_frames:
     model_dir_path = reference_dir_path + model_subdir_suffix.format(n_AL_samples)
-    shutil.copytree(reference_dir_path, #os.path.join(reference_dir_path,'training-datasets_'), 
-                    model_dir_path) #os.path.join(model_dir_path,'training-datasets_'))
+    # copy labeled-data tree
+    shutil.copytree(os.path.join(reference_dir_path,'labeled-data'), #os.path.join(reference_dir_path,'training-datasets_'), 
+                    os.path.join(model_dir_path,'labeled-data'))  #os.path.join(model_dir_path,'training-datasets_'))
+    # copy config
+    shutil.copyfile(os.path.join(reference_dir_path,'config.yaml'),
+                    os.path.join(model_dir_path,'config.yaml'))
 
 ####################################################
 ###########################################################
@@ -116,24 +119,26 @@ for n_AL_samples in list_n_AL_frames:
                             posecfg_template=pose_cfg_yaml_adam_path) # augmenter_type=None, posecfg_template=None,
 
     ###########################################################
-    ## Copy h5 file from 'training-datasets_' to newly created 'training-datasets'                                  
-    shutil.copyfile(os.path.join(model_dir_path,'training-datasets_',
-                                'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'),
-                    os.path.join(model_dir_path,'training-datasets',
-                                'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'))
+    ## Copy h5 file from 'training-datasets' at reference dir, to newly created 'training-datasets'  
+    # it is overwritten after create_training_dataset() so I need to get it back from reference parent dir !   
+    for ext in ['.csv','.h5']:                         
+        shutil.copyfile(os.path.join(reference_dir_path,'training-datasets',
+                                    'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron{}'.format(ext)), # src
+                        os.path.join(model_dir_path,'training-datasets',
+                                    'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron{}'.format(ext))) # dest
 
     ## Delete training-datasets_ directory (?)
-    shutil.rmtree(os.path.join(model_dir_path,'training-datasets_'))
+    # shutil.rmtree(os.path.join(model_dir_path,'training-datasets_'))
 
 
 # %%
 #########################################
 # Check AL000
-df = pd.read_hdf('/home/sofia/datasets/Horse10_AL2/Horses-Byron-2019-05-08/training-datasets_/iteration-0/'+\
+df = pd.read_hdf('/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
                 'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL2/Horses-Byron-2019-05-08_AL000/training-datasets/iteration-0/'+\
-                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle3.pickle'
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08_AL_unif000/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle'
 
 with open(path_to_shuffle_pickle, "rb") as f:
     pickledata = pickle.load(f)
@@ -157,11 +162,11 @@ print(list_horses_in_test)
 # %%
 #########################################
 # Check AL010
-df = pd.read_hdf('/home/sofia/datasets/Horse10_AL2/Horses-Byron-2019-05-08/training-datasets_/iteration-0/'+\
+df = pd.read_hdf('/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
                 'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL2/Horses-Byron-2019-05-08_AL010/training-datasets/iteration-0/'+\
-                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle'
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08_AL_unif010/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle3.pickle' #53-1, 54-2, 50-3
 
 with open(path_to_shuffle_pickle, "rb") as f:
     pickledata = pickle.load(f)
@@ -183,20 +188,4 @@ print(len(list_horses_in_test)) # ok
 print(list_horses_in_test)
 
 
-
 # %%
-####
-# after copying                       
-# l=list(set([df.iloc[el].name[1] for el in map_shuffle_id_to_train_idcs[1]]))
-# l.sort()
-
-# userfeedback=False,
-# net_type='resnet_50',
-# Shuffles=None,
-# windows2linux=False,
-# userfeedback=False,
-# trainIndices=None,
-# testIndices=None,
-# net_type=None,
-# augmenter_type=None,
-# posecfg_template=None,
