@@ -57,76 +57,79 @@ def findMin(list_S_total):
 # Driver code
 if __name__ == "__main__":
     dict_n_files_per_dir_per_shuffle = dict()
-    dict_n_files_per_dir_per_shuffle[0] = [1,6,11,5] # test
-    dict_n_files_per_dir_per_shuffle[1] = [308,
-                                            289,
-                                            306,
-                                            341,
-                                            376,
-                                            174,
-                                            235,
-                                            256,
-                                            168,
-                                            154,
-                                            212,
-                                            159,
-                                            134,
-                                            330,
-                                            180,
-                                            342,
-                                            305,
-                                            376,
-                                            359,
-                                            181]
-    dict_n_files_per_dir_per_shuffle[2] = [308,
-                                            289,
-                                            286,
-                                            174,
-                                            235,
-                                            288,
-                                            168,
-                                            154,
-                                            212,
-                                            240,
-                                            134,
-                                            330,
-                                            180,
-                                            342,
-                                            305,
-                                            295,
-                                            376,
-                                            262,
-                                            359,
-                                            181]
-    dict_n_files_per_dir_per_shuffle[3] = [289,
-                                            306,
-                                            318,
-                                            356,
-                                            174,
-                                            235,
-                                            256,
-                                            168,
-                                            154,
-                                            212,
-                                            240,
-                                            159,
-                                            330,
-                                            180,
-                                            342,
-                                            295,
-                                            376,
-                                            262,
-                                            388,
-                                            359]
-    for sh in range(0,len(dict_n_files_per_dir_per_shuffle.keys())):      
+    # dict_n_files_per_dir_per_shuffle[0] = [1,6,11,5] # test
+    dict_n_files_per_dir_per_shuffle[1] = {'BrownHorseinShadow': 308,
+                                            'BrownHorseintoshadow': 289,
+                                            'Brownhorselight': 306,
+                                            'Brownhorseoutofshadow': 341,
+                                            'Chestnuthorseongrass': 376,
+                                            'Sample1': 174,
+                                            'Sample10':235,
+                                            'Sample11': 256,
+                                            'Sample14': 168,
+                                            'Sample15': 154,
+                                            'Sample16': 212,
+                                            'Sample18': 159,
+                                            'Sample19': 134,
+                                            'Sample2': 330,
+                                            'Sample20': 180,
+                                            'Sample3': 342,
+                                            'Sample4': 305,
+                                            'Sample6': 376,
+                                            'Sample9': 359,
+                                            'TwoHorsesinvideobothmoving': 181}
+                          
+    dict_n_files_per_dir_per_shuffle[2] = {'BrownHorseinShadow': 308,
+                                            'BrownHorseintoshadow': 289,
+                                            'GreyHorseNoShadowBadLight': 286,
+                                            'Sample1': 174,
+                                            'Sample10': 235,
+                                            'Sample12': 288,
+                                            'Sample14': 168,
+                                            'Sample15': 154,
+                                            'Sample16': 212,
+                                            'Sample17': 240,
+                                            'Sample19': 134,
+                                            'Sample2': 330,
+                                            'Sample20': 180,
+                                            'Sample3': 342,
+                                            'Sample4': 305,
+                                            'Sample5': 295,
+                                            'Sample6': 376,
+                                            'Sample7': 262,
+                                            'Sample9': 359,
+                                            'TwoHorsesinvideobothmoving': 181}
+                                           
+    dict_n_files_per_dir_per_shuffle[3] = {'BrownHorseintoshadow': 289,
+                                            'Brownhorselight': 306,
+                                            'ChestnutHorseLight': 318,
+                                            'GreyHorseLightandShadow': 356,
+                                            'Sample1': 174,
+                                            'Sample10': 235,
+                                            'Sample11': 256,
+                                            'Sample14': 168,
+                                            'Sample15': 154,
+                                            'Sample16': 212,
+                                            'Sample17': 240,
+                                            'Sample18': 159,
+                                            'Sample2': 330,
+                                            'Sample20': 180,
+                                            'Sample3': 342,
+                                            'Sample5': 295,
+                                            'Sample6': 376,
+                                            'Sample7': 262,
+                                            'Sample8': 388,
+                                            'Sample9': 359}
+    for sh in range(1,len(dict_n_files_per_dir_per_shuffle.keys())+1):      
 
 
-        min_diff, list_S1 = findMin(dict_n_files_per_dir_per_shuffle[sh])
-        list_S2 = [el for el in dict_n_files_per_dir_per_shuffle[sh] 
+        min_diff, list_S1 = findMin(list(dict_n_files_per_dir_per_shuffle[sh].values()))
+        list_S2 = [el for el in dict_n_files_per_dir_per_shuffle[sh].values() 
                       if el not in list_S1]
         
         print("Minimum difference between the two sets for shuffle {}: {}".format(sh, min_diff))
         print('Elements in S1: {}'.format(list_S1))
+        # print('Elements in S1: {}'.format([dict_n_files_per_dir_per_shuffle[sh][el] for el in list_S1]))
         print('Elements in S2: {}'.format(list_S2))
         # print(S1_final)
         print('---------------------------')
