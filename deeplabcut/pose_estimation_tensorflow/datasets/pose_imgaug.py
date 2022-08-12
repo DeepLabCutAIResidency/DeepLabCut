@@ -398,10 +398,11 @@ class ImgaugPoseDataset(BasePoseDataset):
             if self.has_gt:
                 joints = data_item.joints
                 kpts = np.full((self._n_kpts, 2), np.nan)
-                joint_id = [np.arange(self._n_kpts)]
+                
                 for n, x, y in joints[0]:
                     kpts[int(n)] = x, y
-                joint_ids.append(joint_id)
+
+                joint_ids.append([np.arange(self._n_kpts)])
                 batch_joints.append(kpts)
 
             batch_images.append(image)
