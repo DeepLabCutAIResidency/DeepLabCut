@@ -36,7 +36,7 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
 
 
-reference_dir_path = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08'
+reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08'
 path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
 
 model_subdir_suffix = '_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
@@ -134,11 +134,11 @@ for n_AL_samples in list_n_AL_frames:
 # %%
 #########################################
 # Check AL000
-df = pd.read_hdf('/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
+df = pd.read_hdf('/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
                 'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08_AL_unif000/training-datasets/iteration-0/'+\
-                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle'
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08_AL_unif000/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle' #53-1, 54-2, 50-3
 
 with open(path_to_shuffle_pickle, "rb") as f:
     pickledata = pickle.load(f)
@@ -162,11 +162,11 @@ print(list_horses_in_test)
 # %%
 #########################################
 # Check AL010
-df = pd.read_hdf('/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
+df = pd.read_hdf('/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
                 'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_ALunif/Horses-Byron-2019-05-08_AL_unif010/training-datasets/iteration-0/'+\
-                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_50shuffle3.pickle' #53-1, 54-2, 50-3
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08_AL_unif010/training-datasets/iteration-0/'+\
+                        'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle' #53-1, 54-2, 50-3
 
 with open(path_to_shuffle_pickle, "rb") as f:
     pickledata = pickle.load(f)
