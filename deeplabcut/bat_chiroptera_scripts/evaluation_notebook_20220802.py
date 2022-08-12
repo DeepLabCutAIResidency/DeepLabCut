@@ -49,12 +49,92 @@ for snapshot in [0, 1, 2, 3, 4, 5, 6, 7]:
         modelprefix = modelprefix
     )
     mean.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
-    devi.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
-    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_test.values[test_inds][:]))
-    deviPcut.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))    
+    devi.append(np.nanmean(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds][:].size**.5))
+    
+    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
+    deviPcut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))  
+
+# %% A+ref, shuffle 2
+shuffle = 2
+trainFractionIndex = 1
 
 # %%
+test_inds = []
+train_inds = []
+for i, path in enumerate(image_paths):
+    if str(path[1]).endswith("_A"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_25_test"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_50_test"):
+        test_inds.append(i)
+# %%
+mean = []
+devi = []
+meanPCut = []
+deviPcut = []
+for snapshot in [0, 1, 2, 3, 4, 5, 6, 7]:
+    (
+        ErrorDistribution_all,
+        _,
+        _,
+        ErrorDistributionPCutOff_all,
+        _,
+        _
+    )  = getErrorDistribution(
+        config_path,
+        shuffle=shuffle,
+        snapindex=snapshot,
+        trainFractionIndex = trainFractionIndex,
+        modelprefix = modelprefix
+    )
+    mean.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
+    devi.append(np.nanmean(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds][:].size**.5))
+    
+    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
+    deviPcut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
 
+# %% A+B, shuffle 3
+shuffle = 3
+trainFractionIndex = 2
+
+# %%
+test_inds = []
+train_inds = []
+test_inds = []
+train_inds = []
+for i, path in enumerate(image_paths):
+    if str(path[1]).endswith("_A"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_B"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_50_test"):
+        test_inds.append(i)
+# %%
+mean = []
+devi = []
+meanPCut = []
+deviPcut = []
+for snapshot in [0, 1, 2, 3, 4, 5, 6, 7]:
+    (
+        ErrorDistribution_all,
+        _,
+        _,
+        ErrorDistributionPCutOff_all,
+        _,
+        _
+    )  = getErrorDistribution(
+        config_path,
+        shuffle=shuffle,
+        snapindex=snapshot,
+        trainFractionIndex = trainFractionIndex,
+        modelprefix = modelprefix
+    )
+    mean.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
+    devi.append(np.nanmean(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds][:].size**.5))
+    
+    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
+    deviPcut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
 
 # %% A+B+25, shuffle 4
 shuffle = 4
@@ -73,20 +153,28 @@ for i, path in enumerate(image_paths):
         test_inds.append(i)
 
 # %%
-from getErrorDistribution import getErrorDistribution
-import numpy as np
-(
-    ErrorDistribution_all,
-    _,
-    _,
-    _,
-    ErrorDistributionPCutOff_test,
-    _
-)  = getErrorDistribution(
-    config_path,
-    shuffle=shuffle,
-    snapindex=0,
-    trainFractionIndex = trainFractionIndex,
-    modelprefix = modelprefix
-)
+mean = []
+devi = []
+meanPCut = []
+deviPcut = []
+for snapshot in [0, 1, 2, 3, 4]:
+    (
+        ErrorDistribution_all,
+        _,
+        _,
+        ErrorDistributionPCutOff_all,
+        _,
+        _
+    )  = getErrorDistribution(
+        config_path,
+        shuffle=shuffle,
+        snapindex=snapshot,
+        trainFractionIndex = trainFractionIndex,
+        modelprefix = modelprefix
+    )
+    mean.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
+    devi.append(np.nanmean(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds][:].size**.5))
+    
+    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
+    deviPcut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
 # %%

@@ -8,12 +8,12 @@ from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 
 project_folder = "/home/jonas2/DLC_files/projects/"
 
-deeplabcut.create_new_project(
-            project='geneva_protocol_paper_austin_2020_bat_data',
-            experimenter='DLC',
-            videos=['/home/jonas2/DLC_files/projects/dummyVideos/'],
-            working_directory=project_folder
-        )
+#deeplabcut.create_new_project(
+#            project='geneva_protocol_paper_austin_2020_bat_data',
+#            experimenter='DLC',
+#            videos=['/home/jonas2/DLC_files/projects/dummyVideos/'],
+#            working_directory=project_folder
+#        )
 
 #%%%
 config_path = "/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03/config.yaml"

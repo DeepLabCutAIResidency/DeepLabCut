@@ -134,8 +134,8 @@ project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_model
 training_datasets_path = os.path.join(project_path, "training-datasets")
 #%%
 # Get shuffles
-shuffles = [13]
-trainingsetindices = [0]
+shuffles = [14]
+trainingsetindices = [1]
 # %%
 # Get train and test pose config file paths from base project, for each shuffle
 list_base_train_pose_config_file_paths = []
