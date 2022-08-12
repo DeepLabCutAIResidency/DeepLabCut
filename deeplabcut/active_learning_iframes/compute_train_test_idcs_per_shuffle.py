@@ -200,7 +200,7 @@ if __name__ == "__main__":
     parent_dir_path = '/home/sofia/datasets/Horse10_AL/Horses-Byron-2019-05-08/labeled-data'
     h5_file_path = '/home/sofia/datasets/Horse10_AL/Horses-Byron-2019-05-08/training-datasets_/iteration-0/'+\
                     'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'
-    output_dirs_pickle_path = '/home/sofia/datasets/Horse10_AL/Horses-Byron-2019-05-08/horses_AL_train_test_dirs_plit.pkl'
+    output_dirs_pickle_path = '/home/sofia/datasets/Horse10_AL/Horses-Byron-2019-05-08/horses_AL_train_test_dirs_split.pkl'
     output_idcs_pickle_path = '/home/sofia/datasets/Horse10_AL/Horses-Byron-2019-05-08/horses_AL_train_test_idcs_split.pkl'
 
     ### Compute dict with train directories per shuffle and number of files
