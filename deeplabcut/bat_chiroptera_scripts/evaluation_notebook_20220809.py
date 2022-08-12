@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 
 #%%
 config_path = "/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03/config.yaml"
-modelprefix = "data_augm_00_none"
+#modelprefix = "data_augm_00_none"
+modelprefix = "data_augm_01_fliplr"
+
 
 # %%
 import pandas as pd
@@ -71,25 +73,34 @@ for i, path in enumerate(image_paths):
             test_inds_cam3[j].append(i)
 
 # %%
-mean_cam1 = np.zeros([12,7]) # shuffle x movie
-mean_cam2 = np.zeros([12,7])
-mean_cam3 = np.zeros([12,7])
+shuffles = [2, 14]
+nshuffles = len(shuffles)
+mean_cam1 = np.zeros([nshuffles,7]) # shuffle x movie
+mean_cam2 = np.zeros([nshuffles,7])
+mean_cam3 = np.zeros([nshuffles,7])
 
-devi_cam1 = np.zeros([12,7])
-devi_cam2 = np.zeros([12,7])
-devi_cam3 = np.zeros([12,7])
+devi_cam1 = np.zeros([nshuffles,7])
+devi_cam2 = np.zeros([nshuffles,7])
+devi_cam3 = np.zeros([nshuffles,7])
 
-meanPcut_cam1 = np.zeros([12,7]) # shuffle x movie
-meanPcut_cam2 = np.zeros([12,7])
-meanPcut_cam3 = np.zeros([12,7])
+meanPcut_cam1 = np.zeros([nshuffles,7]) # shuffle x movie
+meanPcut_cam2 = np.zeros([nshuffles,7])
+meanPcut_cam3 = np.zeros([nshuffles,7])
 
-deviPcut_cam1 = np.zeros([12,7])
-deviPcut_cam2 = np.zeros([12,7])
-deviPcut_cam3 = np.zeros([12,7])
+deviPcut_cam1 = np.zeros([nshuffles,7])
+deviPcut_cam2 = np.zeros([nshuffles,7])
+deviPcut_cam3 = np.zeros([nshuffles,7])
 
 # %%
-snapshot = 1 #100k iterations
-for shuffle in range(1,13):
+
+for i, shuffle in enumerate(shuffles):
+    if shuffle == 14:        
+        modelprefix = "data_augm_01_fliplr"
+        snapshot = 11 #100k iterations
+    else:
+        modelprefix = "data_augm_00_none"
+        snapshot = 1 #100k iterations
+
     trainFractionIndex = np.mod(shuffle-1,4)
     (
         ErrorDistribution_all,
@@ -106,27 +117,27 @@ for shuffle in range(1,13):
         modelprefix = modelprefix
     )
     for movie_number in range(7):
-        mean_cam1[shuffle-1,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:])
-        devi_cam1[shuffle-1,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:].size**.5)
+        mean_cam1[i,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:])
+        devi_cam1[i,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:].size**.5)
 
-        meanPcut_cam1[shuffle-1,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam1[movie_number]][:])
-        deviPcut_cam1[shuffle-1,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:].size**.5)
+        meanPcut_cam1[i,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam1[movie_number]][:])
+        deviPcut_cam1[i,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam1[movie_number]][:].size**.5)
 
-        mean_cam2[shuffle-1,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:])
-        devi_cam2[shuffle-1,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:].size**.5)
+        mean_cam2[i,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:])
+        devi_cam2[i,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:].size**.5)
 
-        meanPcut_cam2[shuffle-1,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam2[movie_number]][:])
-        deviPcut_cam2[shuffle-1,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:].size**.5)
+        meanPcut_cam2[i,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam2[movie_number]][:])
+        deviPcut_cam2[i,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam2[movie_number]][:].size**.5)
 
-        mean_cam3[shuffle-1,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:])
-        devi_cam3[shuffle-1,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:].size**.5)
+        mean_cam3[i,movie_number] = np.nanmean(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:])
+        devi_cam3[i,movie_number] = np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:].size**.5)
 
-        meanPcut_cam3[shuffle-1,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam3[movie_number]][:])
-        deviPcut_cam3[shuffle-1,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:].size**.5)
+        meanPcut_cam3[i,movie_number] = np.nanmean(ErrorDistributionPCutOff_all.values[test_inds_cam3[movie_number]][:])
+        deviPcut_cam3[i,movie_number] = np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds_cam3[movie_number]][:].size**.5)
 
 # %%
 
-for shuffle in range(12):
+for i, shuffle in enumerate(shuffles):
     if np.mod(shuffle,4) == 0:
         linestyle = '-'
     elif np.mod(shuffle,4) == 1:
@@ -135,6 +146,8 @@ for shuffle in range(12):
         linestyle = '-.'
     elif np.mod(shuffle,4) == 3:
         linestyle = ':'
+    else:
+        linestyle = '-'
     
     if 0 <= shuffle <= 3:
         color = (0, 0.4470, 0.7410)
@@ -142,23 +155,26 @@ for shuffle in range(12):
         color = (0.8500, 0.3250, 0.0980)
     elif 8 <= shuffle <= 11:
         color = (0.9290, 0.6940, 0.1250)
+    else:
+        color = 'black'
+
 
     movie_number = list(range(1,8))
     movie_number = [x - 6/100 + shuffle/100 for x in movie_number]
     
     plt.rcParams['figure.figsize'] = [15, 10]
     plt.subplot(3,1,1)
-    plt.errorbar(movie_number,meanPcut_cam1[shuffle,:], deviPcut_cam1[shuffle,:,], linestyle=linestyle, color = color)
+    plt.errorbar(movie_number,meanPcut_cam1[i,:], deviPcut_cam1[i,:,], linestyle=linestyle, color = color)
     #plt.legend(["Half",'Half+ref',"Full", "Full+ref","Half IS",'Half+ref IS',"Full IS", "Full+ref IS", "Half MS",'Half+ref MS',"Full MS", "Full+ref MS"])
     plt.ylim([0, 50])
     plt.yticks([0, 5, 10, 20, 30, 40, 50])
 
     plt.subplot(3,1,2)
-    plt.errorbar(movie_number,meanPcut_cam2[shuffle,:], deviPcut_cam2[shuffle,:,], linestyle=linestyle, color = color)
+    plt.errorbar(movie_number,meanPcut_cam2[i,:], deviPcut_cam2[i,:,], linestyle=linestyle, color = color)
     plt.ylim([0, 50])
     plt.yticks([0, 5, 10, 20, 30, 40, 50])
     plt.subplot(3,1,3)
-    plt.errorbar(movie_number,meanPcut_cam3[shuffle,:], deviPcut_cam3[shuffle,:,], linestyle=linestyle, color = color)
+    plt.errorbar(movie_number,meanPcut_cam3[i,:], deviPcut_cam3[i,:,], linestyle=linestyle, color = color)
     plt.ylim([0, 50])
     plt.yticks([0, 5, 10, 20, 30, 40, 50])
     #plt.legend(["Half",'Half+ref',"Full", "Full+ref","Half IS",'Half+ref IS',"Full IS", "Full+ref IS", "Half MS",'Half+ref MS',"Full MS", "Full+ref MS"])
@@ -610,6 +626,7 @@ for snapshot in [0, 1, 2]:
     meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
     deviPcut.append(np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
 
+
 # %% A+B+25, shuffle 12
 shuffle = 12
 trainFractionIndex = 3
@@ -651,4 +668,48 @@ for snapshot in [0, 1, 2]:
     
     meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
     deviPcut.append(np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
+#%%
+config_path = "/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03/config.yaml"
+modelprefix = "data_augm_01_fliplr"
+
+# %% A+ref, shuffle 14
+shuffle = 14
+trainFractionIndex = 1
+
+# %%
+test_inds = []
+train_inds = []
+for i, path in enumerate(image_paths):
+    if str(path[1]).endswith("_A"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_25_ref"):
+        train_inds.append(i)
+    elif str(path[1]).endswith("_50_test"):
+        test_inds.append(i)
+# %%
+mean = []
+devi = []
+meanPCut = []
+deviPcut = []
+for snapshot in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
+    (
+        ErrorDistribution_all,
+        _,
+        _,
+        ErrorDistributionPCutOff_all,
+        _,
+        _
+    )  = getErrorDistribution(
+        config_path,
+        shuffle=shuffle,
+        snapindex=snapshot,
+        trainFractionIndex = trainFractionIndex,
+        modelprefix = modelprefix
+    )
+    mean.append(np.nanmean(ErrorDistribution_all.values[test_inds][:]))
+    devi.append(np.nanstd(ErrorDistribution_all.values[test_inds][:])/(ErrorDistribution_all.values[test_inds][:].size**.5))
+    
+    meanPCut.append(np.nanmean(ErrorDistributionPCutOff_all.values[test_inds][:]))
+    deviPcut.append(np.nanstd(ErrorDistributionPCutOff_all.values[test_inds][:])/(ErrorDistributionPCutOff_all.values[test_inds][:].size**.5))
+
 # %%
