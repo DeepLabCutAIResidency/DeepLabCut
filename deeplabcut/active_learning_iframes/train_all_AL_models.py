@@ -10,7 +10,7 @@ import yaml
 #########################################
 # Input params
 parent_dir_path = '/home/sofia/datasets/Horse10_AL_unif'
-model_prefix = 'Horses-Byron-2019-05-08_AL_unif'
+model_prefix = 'Horse10_AL_unif'
 
 MAX_SNAPSHOTS = 10
 DISPLAY_ITERS = 1000 # display loss every N iters; one iter processes one batch
@@ -18,7 +18,7 @@ MAX_ITERS = 200_000
 SAVE_ITERS = 50000 # save snapshots every n iters
 TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
-GPU_TO_USE=0
+GPU_TO_USE=1
 
 ########################################
 ## Set 'allow growth' before training (allow growth bug)
@@ -27,6 +27,7 @@ os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 #########################################
 ## Train all shuffles per model
 list_models_dirs = [el for el in os.listdir(parent_dir_path) if el.startswith(model_prefix)]
+list_models_dirs.sort()
 for md in list_models_dirs:
 
     ### Get config path
