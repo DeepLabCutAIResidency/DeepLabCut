@@ -1,12 +1,18 @@
 '''
-This script prepares the training datasets for the active learning baseline
+- This script prepares the training datasets for the active learning baseline, which
+assumes samples are uniformly tranferred from the AL test set to the training set.
 
-The baseline
+- We create N datasets to train N models, in each of them we sample uniformly x% of frames from the AL test set and add them to the train set,
+for x in list_fraction_AL_frames
 
-Before running this script:
-- Download horse10.tar.gz and extract in 'Horse10_AL_unif': (use --strip-components 1)
-    mkdir Horse10_AL_unif
-    tar -xvzf horse10.tar.gz -C /home/sofia/datasets/Horse10_AL_unif --strip-components 1
+- The test idcs passed per shuffle are the frames in the testOOD set
+
+The initial sets of train and AL test indices are loaded from the pickle file 'path_to_pickle_w_base_idcs'
+
+- Before running this script:
+    - Download horse10.tar.gz and extract in 'Horse10_AL_unif': (use --strip-components 1)
+        mkdir Horse10_AL_unif
+        tar -xvzf horse10.tar.gz -C /home/sofia/datasets/Horse10_AL_unif --strip-components 1
 
 
 '''
@@ -23,6 +29,7 @@ import pickle
 
 import pandas as pd
 import numpy as np
+import math
 # import random
 
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
@@ -36,13 +43,15 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
 
 
-reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif' #Horses-Byron-2019-05-08'#-------------
+reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif_fr' #Horses-Byron-2019-05-08'#-------------
 path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
 
 model_subdir_prefix = 'Horse10_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
-list_n_AL_frames = [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
+list_fraction_AL_frames = [0, 25, 50, 75, 100] #[0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
-###########################################
+flag_pass_OOD_idcs_as_test_idcs = True # recommended: True (for a constant test set)
+
+###########################################################
 ###########################################################
 # %%
 # Load train/test base indices from pickle
@@ -61,8 +70,8 @@ with open(path_to_pickle_w_base_idcs,'rb') as file:
 # rename training-datasets folder?
 
 # list of models = list of number of active learning frames to add to train set (& remove from test set)
-for n_AL_samples in list_n_AL_frames:
-    model_dir_path = os.path.join(reference_dir_path, model_subdir_prefix.format(n_AL_samples))
+for fr_AL_samples in list_fraction_AL_frames:
+    model_dir_path = os.path.join(reference_dir_path, model_subdir_prefix.format(fr_AL_samples))
     # copy labeled-data tree
     shutil.copytree(os.path.join(reference_dir_path,'labeled-data'), #os.path.join(reference_dir_path,'training-datasets_'), 
                     os.path.join(model_dir_path,'labeled-data'))  #os.path.join(model_dir_path,'training-datasets_'))
@@ -78,13 +87,13 @@ for n_AL_samples in list_n_AL_frames:
 NUM_SHUFFLES = len(map_shuffle_id_to_train_idcs.keys())
 
 # list of models = list of number of active learning frames to add to train set (& remove from test set)
-for n_AL_samples in list_n_AL_frames:
+for fr_AL_samples in list_fraction_AL_frames:
 
-    print('Model with {} active learning frames sampled'.format(n_AL_samples))
+    print('Model with {}%% active learning frames sampled'.format(fr_AL_samples))
 
     ## Get model dir path and model config
     model_dir_path = os.path.join(reference_dir_path, 
-                                  model_subdir_prefix.format(n_AL_samples)) #model_dir_path = reference_dir_path + model_subdir_preffix.format(n_AL_samples)
+                                  model_subdir_prefix.format(fr_AL_samples)) #model_dir_path = reference_dir_path + model_subdir_preffix.format(n_AL_samples)
     config_path = os.path.join(model_dir_path,'config.yaml') 
 
     ###########################################################
@@ -98,22 +107,32 @@ for n_AL_samples in list_n_AL_frames:
         list_test_AL_idcs = map_shuffle_id_to_test_AL_idcs[sh]
 
         # compute indices of test indices to transfer to train set
+        n_AL_samples = math.floor(fr_AL_samples*len(list_test_AL_idcs)/100)
         idx_test_AL_frames_to_transfer = [int(l) for l in np.floor(np.linspace(0,len(list_test_AL_idcs)-1,
                                                                     n_AL_samples))]
 
         # compute final lists of train and test indices for this shuffle, after transfer
-        list_final_test_idcs = list_test_AL_idcs.copy() # we will pop from here
+        list_test_AL_idcs_wo_popped = list_test_AL_idcs.copy() # we will pop from here
         list_test_AL_idcs_to_transfer = []  # to transfer to train set
         for el in sorted(idx_test_AL_frames_to_transfer,reverse=True): # we do reverse order to not alter indexing for next elements after poping
-            list_test_AL_idcs_to_transfer.append(list_final_test_idcs.pop(el)) # pop by index
+            list_test_AL_idcs_to_transfer.append(list_test_AL_idcs_wo_popped.pop(el)) # pop by index
         list_final_train_idcs = list_base_train_idcs + list_test_AL_idcs_to_transfer
         
         # append results to lists of lists
         train_idcs_one_model.append(list_final_train_idcs)
+
+        # select whether to pass remaining AL test idcs or OOD test idcs as 'final' test idcs
+        if flag_pass_OOD_idcs_as_test_idcs:
+            list_final_test_idcs = map_shuffle_id_to_test_OOD_idcs[sh]
+        else:
+            list_final_test_idcs = list_test_AL_idcs_wo_popped
         test_idcs_one_model.append(list_final_test_idcs)
 
         # add training fraction to list
-        training_fraction_one_shuffle = round(len(list_final_train_idcs)/(len(list_final_train_idcs)+len(list_final_test_idcs)),
+        print('Shuffle {} train idcs: {}'.format(sh,len(list_final_train_idcs)))
+        print('Shuffle {} test idcs: {}'.format(sh,len(list_final_test_idcs)))
+        training_fraction_one_shuffle = round(len(list_final_train_idcs)/\
+                                              (len(list_final_train_idcs)+len(list_final_test_idcs)),
                                               2)
         list_training_fraction_per_shuffle.append(training_fraction_one_shuffle)
 
