@@ -9,7 +9,7 @@ import yaml
 
 #########################################
 # Input params
-parent_dir_path = '/home/sofia/datasets/Horse10_AL_unif'
+parent_dir_path = '/home/sofia/datasets/Horse10_AL_unif_fr'
 model_prefix = 'Horse10_AL_unif'
 
 MAX_SNAPSHOTS = 10
@@ -18,7 +18,7 @@ MAX_ITERS = 200_000
 SAVE_ITERS = 50000 # save snapshots every n iters
 TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
-GPU_TO_USE=1
+GPU_TO_USE=0
 
 ########################################
 ## Set 'allow growth' before training (allow growth bug)
@@ -62,7 +62,7 @@ for md in list_models_dirs:
     for sh in list_shuffle_numbers: 
 
         ## Train this shuffle
-        deeplabcut.train_network(config_path_one_model, # config.yaml, common to all models
+        deeplabcut.train_network(config_path_one_model, 
                                  shuffle=sh,
                                  trainingsetindex=dict_training_idx_per_shuffle[sh],
                                  max_snapshots_to_keep=MAX_SNAPSHOTS,
