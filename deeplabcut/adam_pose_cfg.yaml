@@ -160,9 +160,9 @@ min_input_size: 64
 # - [0.001, 1030000]
 optimizer: adam
 multi_step:
-- [1e-4, 7500]
-- [5 * 1e-5, 12000]
-- [1e-5, 200000]
+- [0.0001, 7500]
+- [5e-05, 12000]
+- [1e-05, 200000]
 
 # Learning rate parameters for cosine decay scheduler [used for EfficientNet backbones in DLC]
 # See: https://openaccess.thecvf.com/content/WACV2021/papers/Mathis_Pretraining_Boosts_Out-of-Domain_Robustness_for_Pose_Estimation_WACV_2021_paper.pdf

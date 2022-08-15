@@ -1,12 +1,12 @@
 '''
-1- Download horse10.tar.gz and extract in 'Horses10_AL2': tar -xvzf horse10.tar.gz -C /home/sofia/datasets/Horse10_AL3
+This script prepares the training datasets for the active learning baseline
 
+The baseline
 
-3- Make subdirs that are copy of parent dir with suffix _AL_unif{}, where {}=n frames from active learning
-
-5 - Run create_training_dataset in every subdir
-    - copy h5 file and csv from training-datasets_
-    - delete training-datasets_
+Before running this script:
+- Download horse10.tar.gz and extract in 'Horse10_AL_unif': (use --strip-components 1)
+    mkdir Horse10_AL_unif
+    tar -xvzf horse10.tar.gz -C /home/sofia/datasets/Horse10_AL_unif --strip-components 1
 
 
 '''
@@ -36,10 +36,10 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
 
 
-reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08'
+reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif' #Horses-Byron-2019-05-08'#-------------
 path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
 
-model_subdir_suffix = '_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
+model_subdir_prefix = 'Horse10_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
 list_n_AL_frames = [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
 ###########################################
@@ -62,7 +62,7 @@ with open(path_to_pickle_w_base_idcs,'rb') as file:
 
 # list of models = list of number of active learning frames to add to train set (& remove from test set)
 for n_AL_samples in list_n_AL_frames:
-    model_dir_path = reference_dir_path + model_subdir_suffix.format(n_AL_samples)
+    model_dir_path = os.path.join(reference_dir_path, model_subdir_prefix.format(n_AL_samples))
     # copy labeled-data tree
     shutil.copytree(os.path.join(reference_dir_path,'labeled-data'), #os.path.join(reference_dir_path,'training-datasets_'), 
                     os.path.join(model_dir_path,'labeled-data'))  #os.path.join(model_dir_path,'training-datasets_'))
@@ -83,13 +83,15 @@ for n_AL_samples in list_n_AL_frames:
     print('Model with {} active learning frames sampled'.format(n_AL_samples))
 
     ## Get model dir path and model config
-    model_dir_path = reference_dir_path + model_subdir_suffix.format(n_AL_samples)
+    model_dir_path = os.path.join(reference_dir_path, 
+                                  model_subdir_prefix.format(n_AL_samples)) #model_dir_path = reference_dir_path + model_subdir_preffix.format(n_AL_samples)
     config_path = os.path.join(model_dir_path,'config.yaml') 
 
     ###########################################################
     ## Create list of train and test idcs per shuffle for this model (list of lists ojo)
     train_idcs_one_model = []
     test_idcs_one_model = []
+    list_training_fraction_per_shuffle = []
     for sh in range(1,NUM_SHUFFLES+1):
         # get base list of train and test_AL idcs for this shuffle
         list_base_train_idcs = map_shuffle_id_to_train_idcs[sh] 
@@ -109,6 +111,17 @@ for n_AL_samples in list_n_AL_frames:
         # append results to lists of lists
         train_idcs_one_model.append(list_final_train_idcs)
         test_idcs_one_model.append(list_final_test_idcs)
+
+        # add training fraction to list
+        training_fraction_one_shuffle = round(len(list_final_train_idcs)/(len(list_final_train_idcs)+len(list_final_test_idcs)),
+                                              2)
+        list_training_fraction_per_shuffle.append(training_fraction_one_shuffle)
+
+    ############################################################
+    ## Edit training fraction in model's config
+    training_fraction_dict = {'TrainingFraction': list_training_fraction_per_shuffle}
+    edit_config(config_path,
+                training_fraction_dict)
 
     ###########################################################
     ## Create training dataset for this model (all shuffles)
@@ -134,10 +147,10 @@ for n_AL_samples in list_n_AL_frames:
 # %%
 #########################################
 # Check AL000
-df = pd.read_hdf('/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
-                'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
+df = pd.read_hdf(os.path.join(reference_dir_path,'training-datasets',
+                             'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'))
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08_AL_unif000/training-datasets/iteration-0/'+\
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/training-datasets/iteration-0/'+\
                         'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle' #53-1, 54-2, 50-3
 
 with open(path_to_shuffle_pickle, "rb") as f:
@@ -162,10 +175,10 @@ print(list_horses_in_test)
 # %%
 #########################################
 # Check AL010
-df = pd.read_hdf('/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08/training-datasets/iteration-0/'+\
-                'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
+df = pd.read_hdf(os.path.join(reference_dir_path,'training-datasets',
+                             'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5'))
 
-path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horses-Byron-2019-05-08_AL_unif010/training-datasets/iteration-0/'+\
+path_to_shuffle_pickle = '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif010/training-datasets/iteration-0/'+\
                         'UnaugmentedDataSet_HorsesMay8/Documentation_data-Horses_53shuffle1.pickle' #53-1, 54-2, 50-3
 
 with open(path_to_shuffle_pickle, "rb") as f:
