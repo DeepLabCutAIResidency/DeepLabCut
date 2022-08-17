@@ -10,7 +10,7 @@ import yaml
 #########################################
 # Input params
 parent_dir_path = '/home/sofia/datasets/Horse10_AL_unif_fr'
-model_prefix = 'Horse10_AL_unif'
+model_prefix = 'Horse10_AL_unif100'
 
 MAX_SNAPSHOTS = 10
 DISPLAY_ITERS = 1000 # display loss every N iters; one iter processes one batch
@@ -18,7 +18,7 @@ MAX_ITERS = 200_000
 SAVE_ITERS = 50000 # save snapshots every n iters
 TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
-GPU_TO_USE=0
+GPU_TO_USE=2
 
 ########################################
 ## Set 'allow growth' before training (allow growth bug)
