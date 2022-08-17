@@ -5,8 +5,6 @@
 import os
 from pathlib import Path
 
-
-
 import tensorflow as tf
 from scipy.special import softmax
 from scipy.stats import entropy
@@ -29,13 +27,14 @@ from deeplabcut.pose_estimation_tensorflow.core import predict
 from deeplabcut.pose_estimation_tensorflow.util import visualize
 # from deeplabcut.utils.auxfun_videos import imresize
 
-from deeplabcut.pose_estimation_tensorflow.core.predict_multianimal import find_local_peak_indices_maxpool_nms
+from deeplabcut.pose_estimation_tensorflow.core.predict_multianimal import find_local_maxima #find_local_peak_indices_maxpool_nms
 
 #####################################################################################################
 # %%
 ## Inputs 
 cfg_path = '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'
-    #'/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/config.yaml'#
+    # '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/config.yaml'--100k ITERS
+    # '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'--200k ITERS
 shuffle = 1
 modelprefix = ''
 
@@ -92,25 +91,14 @@ dlc_cfg["batch_size"] = 1 #cfg["batch_size"] # OJO this is batch size for infere
 
 sess, inputs, outputs = predict.setup_pose_prediction(dlc_cfg) # pass config loaded, not path, use load_config
 
-# update number of outputs and adjust pandas indices
-# dlc_cfg["num_outputs"] = cfg.get("num_outputs", 1)
-
-
 ######################################################
 # %%
 # Run inference---eventually in a batch
-im = imread(frame_path, mode="skimage")
+im = imread(frame_path, 
+            mode="skimage")
 frame = img_as_ubyte(im) #---- is frame passed ok, ok size?
 
-# src = cv2.imread(frame_path)
-# frame = cv2.cvtColor(src, cv2.COLOR_BGR2RGB)
-# frame = img_as_ubyte(frame)
-
-# img = np.expand_dims(frame, axis=0).astype(float)
-# outputs_np = sess.run(outputs, feed_dict={inputs: img})
-# scmap, locref = predict.extract_cnn_output(outputs_np, cfg)
-# num_outputs = cfg.get("num_outputs", 1)
-
+# get heatmap
 scmap, locref, pose = predict.getpose(frame, #np array # (162, 288, 3)
                                         dlc_cfg, 
                                         sess, 
@@ -124,28 +112,35 @@ scmap, locref, pose = predict.getpose(frame, #np array # (162, 288, 3)
 ###################################################################
 # %%  Compute uncertainty score per bodypart
 
-### Extract model's confidence in local max
-neighborhood_size = 5 #
-# find_local_peak_indices_maxpool_nms(scmap, neighborhood_size, np.min(find_local_peak_indices_maxpool_nms))
+min_px_btw_peaks = 2 # Peaks are the local maxima in a region of `2 * min_distance + 1` (i.e. peaks are separated by at least `min_distance`).
+min_peak_intensity = 0.005 # 0.001
+max_n_peaks = float('inf')
+all_joints_names = dlc_cfg["all_joints_names"]
 
-list_local_max_coordinates = []
+flag_plot_max_p_per_bdprt = True
+
+list_local_max_coordinates = [] # per bodypart
 list_local_max_pvalues = []
 list_local_max_softmax = []
 list_local_max_entropy = []
 for j in range(scmap.shape[-1]):
-    # local max
-    local_max_coordinates = peak_local_max(scmap[:,:,j],min_distance=5) #---why no result if mindist=7?
+    # local max (yx coords = row,col) ---change to nms approach? (TF tensor?)
+    local_max_coordinates_rc = peak_local_max(scmap[:,:,j],
+                                              min_distance=min_px_btw_peaks,
+                                              threshold_abs=min_peak_intensity,
+                                              exclude_border=False,
+                                              num_peaks=max_n_peaks) #---why no result if mindist=7?
     # local_max_coordinates = find_local_peak_indices_maxpool_nms(scmap[:,:,j], 
-                                                                # neighborhood_size, 
-                                                                # np.min(find_local_peak_indices_maxpool_nms))
+    #                                                             neighborhood_size,  #The size of the window for each dimension of the input tensor. 
+    #                                                             np.min(scmap[:,:,j]))
 
-    list_local_max_coordinates.append(local_max_coordinates) #Peaks are the local maxima in a region of 2 * min_distance + 1 
-    
+    list_local_max_coordinates.append(local_max_coordinates_rc) #Peaks are the local maxima in a region of 2 * min_distance + 1 
+           
+
     # pvalues
-    local_max_pvalues = scmap[local_max_coordinates[:,0],
-                              local_max_coordinates[:,1],j] 
+    local_max_pvalues = scmap[local_max_coordinates_rc[:,0],
+                              local_max_coordinates_rc[:,1],j] 
     list_local_max_pvalues.append(local_max_pvalues)
-
 
     ### Softmax
     local_max_softmax = softmax(local_max_pvalues, axis=0)
@@ -155,7 +150,56 @@ for j in range(scmap.shape[-1]):
     ### Entropy
     list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
 
+    #----------
+    # plot 
+    plt.matshow(scmap[:,:,j])
+    plt.scatter(local_max_coordinates_rc[:,1],
+                local_max_coordinates_rc[:,0],
+                10,'r')
+    for k in range(local_max_coordinates_rc.shape[0]):
+        plt.text(local_max_coordinates_rc[k,1],
+                local_max_coordinates_rc[k,0],
+                '{:.2f}'.format(local_max_pvalues[k]),
+                fontsize=12,
+                fontdict={'color':'r'})            
+    plt.title('{} - local maxima and confidence (MPE={:.2f})'.format(all_joints_names[j],
+                                                                    list_local_max_entropy[-1]))    
+    plt.show() 
 
+    plt.plot(local_max_softmax,'.-')
+    plt.title('{} - normalised prob across maxima (MPE={:.2f})'.format(all_joints_names[j], 
+                                                                       list_local_max_entropy[-1]))
+    plt.xlabel('local maximum id')
+    plt.ylabel('normalised prob')
+    plt.show()
+    #---------
+
+## Compate MPE and p metrics
+fig, ax1 = plt.subplots()
+
+# MPE in ax1
+ax1.plot(list(range(len(list_local_max_entropy))),
+         list_local_max_entropy,
+         '.-',
+         color='tab:blue')   
+ax1.set_xticks(list(range(len(list_local_max_entropy))),
+                all_joints_names,
+                rotation = 90,
+                ha='center')
+ax1.set_ylabel('MPE', color='tab:blue')
+ax1.set_ylim([-0.05,2])
+
+# optionally: max p per bodypart in ax2
+if flag_plot_max_p_per_bdprt:
+    ax2 = ax1.twinx()
+    # p value per bdprt in ax2         
+    ax2.plot(list(range(len(list_local_max_entropy))),
+             [np.max(x) for x in list_local_max_pvalues],
+             '.-',
+             color='tab:orange')          
+    ax2.set_ylabel('p', color='tab:orange')               
+plt.title('MPE/max p per bodypart')         
+plt.show()
 ###################################################################
 # %% Visualise results
 # Based on visualize.show_heatmaps(dlc_cfg, frame, scmap, pose)
@@ -223,76 +267,14 @@ for pidx, idx_s in enumerate(idcs_sorted_by_entropy):
 # curr_plot = axarr[0, 0]
 
 
-# %%
-plt.plot(list_local_max_entropy)
-plt.plot(pose[:,2])
 
 
 # %%
-# # For every img
-# #   For every bodypart
-# #    Extract local max
-# neighborhood_size = 5
-# scmap_local_max = filters.maximum_filter(scmap, 
-#                                          neighborhood_size,
-#                                          mode='reflect')
 
+### Extract model's confidence in local max
+# neighborhood_size = 5 #
+# local_max_coordinates = find_local_maxima(np.expand_dims(scmap,axis=0), 
+#                                           neighborhood_size,  #The size of the window for each dimension of the input tensor. 
+#                                           0)
+# # find_local_peak_indices_maxpool_nms(scmap, neighborhood_size, np.min(find_local_peak_indices_maxpool_nms))
 
-# # plot                                        
-# list_joints = dlc_cfg["all_joints_names"]
-# cmap="jet"
-# plt_interp = "bilinear"
-# scmap_up_local_max = np.empty((im.shape[0],im.shape[1],scmap.shape[-1]))
-# for bp_i, bp_str in enumerate(list_joints):
-#     fig = plt.figure(figsize=(10,10))
-#     ax = plt.gca()
-
-#     # get heatmap for this bodypart
-#     scmap_part = scmap[:, :, bp_i].squeeze()
-
-#     # upsample
-#     scmap_part_upsampled = cv2.resize(scmap_part, #None, fx=size, fy=size, 
-#                                     (im.shape[1],im.shape[0]),
-#                                     interpolation=cv2.INTER_CUBIC)
-#     # pass maxpool filter                                
-#     scmap_up_local_max[:,:,bp_i] = filters.maximum_filter(scmap_part_upsampled, 
-#                                                             neighborhood_size,
-#                                                             mode='reflect') #default
-
-#     ax.imshow(frame) #, interpolation=plt_interp)
-#     hm=ax.imshow(scmap_up_local_max[:,:,bp_i], #scmap_part_upsampled, #
-#                   alpha=0.5, 
-#                   cmap=cmap, 
-#                   interpolation=plt_interp)
-#     # hm.set_clim(vmin=0,vmax=1)     
-#     divider = make_axes_locatable(ax)
-#     cax = divider.append_axes("right", size="5%", pad=0.05) 
-#     plt.colorbar(hm, cax=cax)   
-
-#     ax.set_title('{} - {} (p={:.3f})'.format(bp_i,
-#                                             bp_str,
-#                                             pose[bp_i,2]))    
-#     plt.show()           
-
-# # # Extract local maxima 
-# # list_joints = dlc_cfg["all_joints_names"]
-# # neighborhood_size = 5
-# # scmap_local_max = np.empty_like(scmap.shape)
-# # for bp_i, bp_str in enumerate(list_joints):
-# #     bp_i
-# #     scmap_part = scmap[:, :, bp_i].squeeze()
-# #     # scmap_part_upsampled = resize(scmap_part, #list_jointsNone, fx=size, fy=size, 
-# #     #                               im.shape),
-# #                                       #interpolation=cv2.INTER_CUBIC)
-# #     scmap_local_max[:,:,bp_i-1] = filters.maximum_filter(scmap_part, 
-# #                                                          neighborhood_size,
-# #                                                          mode='reflect') #default
-
-# # Compute normalised prediction for each local maxima
-
-
-
-# # Compute Multiple Peak Entropy uncertainty of bodypart p in image I
-
-
-# %%
