@@ -47,7 +47,7 @@ reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif_fr' #Horses-Byron-201
 path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
 
 model_subdir_prefix = 'Horse10_AL_unif{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
-list_fraction_AL_frames = [0, 25, 50, 75, 100] #[0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
+list_fraction_AL_frames = [25, 50, 75, 100] #[0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
 flag_pass_OOD_idcs_as_test_idcs = True # recommended: True (for a constant test set)
 
@@ -131,9 +131,11 @@ for fr_AL_samples in list_fraction_AL_frames:
         # add training fraction to list
         print('Shuffle {} train idcs: {}'.format(sh,len(list_final_train_idcs)))
         print('Shuffle {} test idcs: {}'.format(sh,len(list_final_test_idcs)))
-        training_fraction_one_shuffle = round(len(list_final_train_idcs)/\
-                                              (len(list_final_train_idcs)+len(list_final_test_idcs)),
-                                              2)
+        training_fraction_one_shuffle = \
+            round(len(list_final_train_idcs) * 1.0 / (len(list_final_train_idcs)+len(list_final_test_idcs)), 2)
+        training_fraction_one_shuffle = int(100*training_fraction_one_shuffle)/100 # to match name of shuffle saved!
+                                                # int((len(list_final_train_idcs)/\
+                                                #   (len(list_final_train_idcs)+len(list_final_test_idcs)))*100)/100
         list_training_fraction_per_shuffle.append(training_fraction_one_shuffle)
 
     ############################################################
