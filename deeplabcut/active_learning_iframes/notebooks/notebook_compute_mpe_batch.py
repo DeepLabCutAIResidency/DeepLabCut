@@ -174,7 +174,7 @@ def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
 
     # for each frame
     loc_max_per_frame_and_bprt = np.empty((scmaps_all_frames.shape[0],
-                                            max_n_peaks, # rows
+                                            2, # rows and cols
                                             max_n_peaks, # cols
                                             scmaps_all_frames.shape[-1]))
     sftmx_per_frame_and_bprt = np.empty((scmaps_all_frames.shape[0],
@@ -182,10 +182,12 @@ def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
                                         scmaps_all_frames.shape[-1]))
     mpe_per_frame_and_bprt = np.empty((scmaps_all_frames.shape[0],
                                       scmaps_all_frames.shape[-1]))
+    max_p_per_frame_and_bprt = np.empty((scmaps_all_frames.shape[0],
+                                        scmaps_all_frames.shape[-1]))                                  
     for f in range(scmaps_all_frames.shape[0]):
         # for each bdprt
-        # list_local_max_coordinates = [] # per bodypart
-        # list_local_max_pvalues = []
+        list_local_max_coordinates = [] # per bodypart
+        list_local_max_pvalues = []
         list_local_max_softmax = []
         list_local_max_entropy = []
         for bp in range(scmaps_all_frames.shape[-1]):
@@ -221,11 +223,16 @@ def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
             ### compute entropy across normalised prob of local max
             list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
 
-        loc_max_per_frame_and_bprt[f,:,:,:] = list_local_max_coordinates
-        sftmx_per_frame_and_bprt[f,:,:] = list_local_max_softmax
+        loc_max_per_frame_and_bprt[f,0,:,:] = np.array([x[:,0] for x in list_local_max_coordinates]).T #row
+        loc_max_per_frame_and_bprt[f,1,:,:] = np.array([x[:,1] for x in list_local_max_coordinates]).T #col
+        sftmx_per_frame_and_bprt[f,:,:] = np.array(list_local_max_softmax).T
         mpe_per_frame_and_bprt[f,:] = list_local_max_entropy
+        max_p_per_frame_and_bprt[f,:] = [max(x) for x in list_local_max_pvalues] # get max within local max per bodypart and frame
 
-    return mpe_per_frame_and_bprt, sftmx_per_frame_and_bprt, loc_max_per_frame_and_bprt
+    return mpe_per_frame_and_bprt, \
+            sftmx_per_frame_and_bprt, \
+            loc_max_per_frame_and_bprt, \
+            max_p_per_frame_and_bprt
 #####################################################################################################
 # %%
 ## Inputs 
@@ -302,8 +309,7 @@ sess, inputs, outputs = predict.setup_pose_prediction(dlc_cfg) # pass config loa
 
 ##########################################################
 # %% 
-# Prepare batch
-
+# Prepare batch of OOD images
 # Load train/test base indices from pickle
 with open(path_to_pickle_w_base_idcs,'rb') as file:
     # pickle.load(file)
@@ -315,8 +321,7 @@ with open(path_to_pickle_w_base_idcs,'rb') as file:
 df_groundtruth = pd.read_hdf(path_to_h5_file)
 
 list_test_OOD_images = list(df_groundtruth.index[map_shuffle_id_to_test_OOD_idcs[shuffle]])
-list_test_OOD_images.sort()
-# list_test_OOD_images = [os.path.join(os.path.dirname(cfg_path),x) for x in list_test_OOD_images]
+
 ######################################################
 # %%
 # Run inference on batch 
@@ -328,53 +333,115 @@ list_scmaps_per_frame = compute_batch_scmaps_per_frame(cfg,
                                                         batch_size_inference)
 scmaps_all_frames = np.stack(list_scmaps_per_frame,axis=0)    
 
-# PredictedData, nframes, nx, ny = GetPosesofFrames(cfg, 
-#                                                     dlc_cfg, 
-#                                                     sess, inputs, outputs, 
-#                                                     os.path.dirname(cfg_path), 
-#                                                     list_test_OOD_images, 
-#                                                     len(list_test_OOD_images), 
-#                                                     batch_size_inference)
-
-#############
-# for frame_path in list_test_OOD_images:
-#     im = imread(frame_path, 
-#                 mode="skimage")
-#     frame = img_as_ubyte(im) 
-
-#     # get heatmap
-#     scmap, locref, pose = predict.getpose(frame, #np array # (162, 288, 3)
-#                                             dlc_cfg, 
-#                                             sess, 
-#                                             inputs, 
-#                                             outputs,
-#                                             outall=True) #getpose(image, cfg, sess, inputs, outputs, outall=False)
-
-# scmap.shape   (22, 36, 22) --last dimension is joint
-# locref       (22, 36, 22, 2)       
-# pose.shape       (22, 3)        
 #    
 ###################################################################
-# %%  Compute uncertainty per bodypart per frame
-
-(mpe_per_frame_and_bprt, 
-    sftmx_per_frame_and_bprt, 
-    loc_max_per_frame_and_bprt) = compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
+# %%  Compute uncertainty per bodypart & per frame
+mpe_per_frame_and_bprt, \
+    sftmx_per_frame_and_bprt,\
+    loc_max_per_frame_and_bprt,\
+    max_p_per_frame_and_bprt = compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
                                                                  min_px_btw_peaks,
                                                                  min_peak_intensity,
                                                                  max_n_peaks)
+###################################################################                                                                 
+# %% Compute mean, max, median  of mpe per frame
+mean_mpe_per_frame = np.mean(mpe_per_frame_and_bprt,axis=-1)
+max_mpe_per_frame = np.max(mpe_per_frame_and_bprt,axis=-1)
+median_mpe_per_frame = np.median(mpe_per_frame_and_bprt,axis=-1)
 
+# sort idcs by mean_mpe
+list_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_test_OOD_idcs[shuffle], #idcs from OOD set
+                                                     mean_mpe_per_frame),
+                                                key=lambda pair: pair[1],
+                                                reverse=True)] # sort by the second element of the tuple
+list_test_OOD_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_idcs_ranked])
+###################################################################
+# %% plot results per frame
+mean_max_p_per_frame = np.mean(max_p_per_frame_and_bprt,axis=-1)
+
+fig, ax1 = plt.subplots()
+ax1.plot(mean_max_p_per_frame,
+        color='tab:orange')
+ax1.set_ylabel('max p', color='tab:orange')
+ax1.set_ylim([0.55,1.05])
+
+ax2=ax1.twinx()
+ax2.plot(mean_mpe_per_frame,
+        color='tab:blue')
+ax2.set_ylabel('MPE', color='tab:blue')
+plt.show()
+
+## plot mean, max, median mpe per frame vs max p per frame
+plt.plot(mean_max_p_per_frame,mean_mpe_per_frame,'.',color='tab:green',label='mean MPE')
+plt.plot(mean_max_p_per_frame,max_mpe_per_frame,'.',color='tab:red',label='max MPE')
+plt.plot(mean_max_p_per_frame,median_mpe_per_frame,'.',color='tab:blue', label='median MPE')
+plt.vlines(0.5, 1.5, 1.62,linestyles='--')
+plt.legend()
+plt.xlabel('mean max p')
+plt.ylabel('MPE')
+plt.show()
+# ---
 # local_max_coordinates_rc = find_local_peak_indices_maxpool_nms(scmaps_all_frames, 
 #                                                                 min_px_btw_peaks, 
 #                                                                 min_peak_intensity)
-# out = local_max_coordinates_rc.eval(session=tf.compat.v1.Session())     # shape=(465059, 4)
+# out = local_max_coordinates_rc.eval(session=tf.compat.v1.Session())     # shape=(465059, 4)---why 4?? top 2 peaks?
 
 # local_max_coordinates_rc = find_local_peak_indices_skimage(scmaps_all_frames,
 #                                                             min_px_btw_peaks, 
 #                                                             min_peak_intensity)
 
 ###################################################################
-# %%  Compute uncertainty score per bodypart
+# %% Check results same as before....
+frame_id = 25
+
+list_local_max_coordinates = []
+list_local_max_pvalues = []
+list_local_max_softmax = []
+list_local_max_entropy = []
+for bp in range(scmaps_all_frames.shape[-1]):
+    local_max_coordinates_rc = peak_local_max(scmaps_all_frames[frame_id,:,:,bp],
+                                                min_distance=min_px_btw_peaks,
+                                                threshold_abs=min_peak_intensity,
+                                                exclude_border=False,
+                                                num_peaks=max_n_peaks) 
+    list_local_max_coordinates.append(local_max_coordinates_rc)
+
+    local_max_pvalues = scmaps_all_frames[frame_id,
+                                        local_max_coordinates_rc[:,0],
+                                        local_max_coordinates_rc[:,1],
+                                        bp] 
+    list_local_max_pvalues.append(local_max_pvalues)
+
+    ### Softmax and entropy
+    local_max_softmax = softmax(local_max_pvalues, axis=0)
+    list_local_max_softmax.append(local_max_softmax)
+    ### Entropy
+    list_local_max_entropy.append(entropy(local_max_softmax,axis=0))       
+
+# Compare
+if not (np.abs(mpe_per_frame_and_bprt[25,:] - np.array(list_local_max_entropy)) \
+    < 1e-06).all():
+    print('mismatch in mpe calculation')     
+else:
+    print('mpe matches')
+if not (np.abs(sftmx_per_frame_and_bprt[25,:] - np.array(list_local_max_softmax).T) < 1e-06).all():
+    print('mismatcg in softmax calculation')
+else:
+    print('softmax matches')
+if not (loc_max_per_frame_and_bprt[25,:,:,:].T == np.array(list_local_max_coordinates)).all():
+    print('mismatch in local max row and col calculation')
+else:
+    print('local max coords matches')
+
+if not (np.abs(np.array([max(x) for x in list_local_max_pvalues]) \
+        - max_p_per_frame_and_bprt[25,:]) < 1e-6).all():
+    print('mismatch in max p per frame calculation')
+else:
+    print('max p per frame matches')
+
+
+###################################################################
+# %%  Plot uncertainty score per frame and bodypart
 
 # scmap_one_frame = list_scmaps_per_frame[0]
 all_joints_names = dlc_cfg["all_joints_names"]
@@ -385,7 +452,7 @@ list_local_max_softmax = []
 list_local_max_entropy = []
 
 # for each frame
-for f in [1000]:#range(scmaps_all_frames.shape[0]):
+for f in [25]:#range(scmaps_all_frames.shape[0]):
     # for each bdprt
     for bp in range(scmaps_all_frames.shape[-1]):
         local_max_coordinates_rc = peak_local_max(scmaps_all_frames[f,:,:,bp],
@@ -393,12 +460,7 @@ for f in [1000]:#range(scmaps_all_frames.shape[0]):
                                                     threshold_abs=min_peak_intensity,
                                                     exclude_border=False,
                                                     num_peaks=max_n_peaks) 
-        if local_max_coordinates_rc.size==0:
-            local_max_coordinates_rc = peak_local_max(scmaps_all_frames[f,:,:,bp],
-                                                        min_distance=min_px_btw_peaks,
-                                                        threshold_abs=0,
-                                                        exclude_border=False,
-                                                        num_peaks=max_n_peaks)                                             
+                                        
         list_local_max_coordinates.append(local_max_coordinates_rc) #Peaks are the local maxima in a region of 2 * min_distance + 1 
             
 
@@ -414,14 +476,6 @@ for f in [1000]:#range(scmaps_all_frames.shape[0]):
         list_local_max_softmax.append(local_max_softmax)
         ### Entropy
         list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
-        # if len(local_max_pvalues)!=0:
-        #     local_max_softmax = softmax(local_max_pvalues, axis=0)
-        #     list_local_max_softmax.append(local_max_softmax)
-        #     ### Entropy
-        #     list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
-        # else:
-        #     list_local_max_softmax.append(np.empty_like(local_max_pvalues))
-        #     list_local_max_entropy.append(np.empty_like(local_max_pvalues))
         #----------
         # plot 
         plt.matshow(scmaps_all_frames[f,:,:,bp])
@@ -474,15 +528,4 @@ for f in [1000]:#range(scmaps_all_frames.shape[0]):
     plt.title('MPE/max p per bodypart')         
     plt.show()
 
-####################################################################
 
-
-
-
-
-###################################################################
-
-
-
-
-# %%
