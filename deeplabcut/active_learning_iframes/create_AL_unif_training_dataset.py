@@ -1,13 +1,17 @@
 '''
-- This script prepares the training datasets for the active learning baseline, which
-assumes samples are uniformly tranferred from the AL test set to the training set.
-
-- We create N datasets to train N models, in each of them we sample uniformly x% of frames from the AL test set and add them to the train set,
-for x in list_fraction_AL_frames
-
+This script prepares the training datasets for the active learning baseline, using the OneHorse approach. 
+- In this approach, we separate the data into 10 train horses and 20 test horses (one horse = one video)
+- We divide the 10 train horses in two parts: a base train set (one horse) and an active train set 
+    (the remaining 9 horses from the full train set)
+- We train N models with N different active learning setups
+    In the baseline, we train on the base train set +  x% of frames from the AL train set
+    The fraction of AL train frames are selected via uniform temporal sampling across all videos
+    We typicall consider x = [0, 25, 50, 75, 100]
+    
 - The test idcs passed per shuffle are the frames in the testOOD set
 
-The initial sets of train and AL test indices are loaded from the pickle file 'path_to_pickle_w_base_idcs'
+- The sets of train indices (for both base and AL sets) and test indices per shuffle
+  are loaded from the pickle file 'path_to_pickle_w_base_idcs'
 
 - Before running this script:
     - Download horse10.tar.gz and extract in 'Horse10_AL_unif': (use --strip-components 1)
@@ -104,7 +108,7 @@ for fr_AL_samples in list_fraction_AL_frames:
         #---------------------------------------------------------------------------
         # Compute indices of AL train indices to transfer to train set ---sample randomly instead?
         n_AL_samples = math.floor(fr_AL_samples*len(list_AL_train_idcs)/100)
-        idx_AL_train_frames_to_transfer = [int(l) for l in np.floor(np.linspace(0,
+        idx_AL_train_idcs_to_transfer = [int(l) for l in np.floor(np.linspace(0,
                                                                                len(list_AL_train_idcs)-1,
                                                                                n_AL_samples,
                                                                                endpoint=False))] #endpoint=True makes last sample=stop value
@@ -113,7 +117,7 @@ for fr_AL_samples in list_fraction_AL_frames:
         ## Compute final lists of train indices for this shuffle, after transfer
         list_AL_train_idcs_wo_popped = list_AL_train_idcs.copy() # we will pop from here
         list_AL_train_idcs_to_transfer = []  # to transfer to train set
-        for el in sorted(idx_AL_train_frames_to_transfer,reverse=True): # we do reverse order to not alter indexing for next elements after poping
+        for el in sorted(idx_AL_train_idcs_to_transfer,reverse=True): # we do reverse order to not alter indexing for next elements after poping
             list_AL_train_idcs_to_transfer.append(list_AL_train_idcs_wo_popped.pop(el)) # pop by index
         list_final_train_idcs = list_base_train_idcs + list_AL_train_idcs_to_transfer
         
