@@ -458,7 +458,7 @@ def GetDataandMetaDataFilenames(trainingsetfolder, trainFraction, shuffle, cfg):
         "Documentation_data-"
         + cfg["Task"]
         + "_"
-        + str(round(trainFraction * 100)) #str(int(trainFraction * 100))
+        + str(int(round(trainFraction * 100,6))) #------------ str(int(trainFraction * 100))
         + "shuffle"
         + str(shuffle)
         + ".pickle",
@@ -468,7 +468,7 @@ def GetDataandMetaDataFilenames(trainingsetfolder, trainFraction, shuffle, cfg):
         cfg["Task"]
         + "_"
         + cfg["scorer"]
-        + str(int(100 * trainFraction))
+        + str(int(round(trainFraction * 100,6))) #------------ sstr(int(100 * trainFraction))
         + "shuffle"
         + str(shuffle)
         + ".mat",
@@ -487,7 +487,7 @@ def get_model_folder(trainFraction, shuffle, cfg, modelprefix=""):
         Task
         + date
         + "-trainset"
-        + str(round(trainFraction * 100.0)) # change to round, test with 0.57
+        + str(int(round(trainFraction * 100.0,6))) # change to round, test with 0.57
         + "shuffle"
         + str(shuffle),
     )
@@ -508,7 +508,7 @@ def get_evaluation_folder(trainFraction, shuffle, cfg, modelprefix=""):
         Task
         + date
         + "-trainset"
-        + str(round(trainFraction * 100)) #------------ str(int(trainFraction * 100))
+        + str(int(round(trainFraction * 100,6))) #------------ str(int(trainFraction * 100))
         + "shuffle"
         + str(shuffle),
     )
