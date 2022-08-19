@@ -147,8 +147,8 @@ def convert_dir_list_to_dict_w_nfiles(list_dirs,
 
 ########################################################
 def compute_dicts_w_nfiles_in_train_test_sets_per_shuffle(parent_dir_path,
-                                                         map_shuffle_id_to_train_dirs,
-                                                         files_ext_w_dot):
+                                                          map_shuffle_id_to_train_dirs,
+                                                          files_ext_w_dot):
     """
     Given a parent dir path and the dictionary with train directories for each shuffle, 
     this script returns three dicts:
