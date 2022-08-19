@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import pickle
 
-# import cv2
+import cv2
 import numpy as np
 import pandas as pd
 import math
@@ -32,7 +32,8 @@ from deeplabcut.pose_estimation_tensorflow.core.predict_multianimal import find_
 
 
 ###############################################################
-def set_sel_snapshot_weights_in_test_cfg(cfg_path,
+def set_inference_params_in_test_cfg(cfg_path,
+                                        batch_size_inference,
                                         shuffle,
                                         trainingsetindex = None, # if None, extracted from config based on shuffle number
                                         modelprefix='',
@@ -67,12 +68,14 @@ def set_sel_snapshot_weights_in_test_cfg(cfg_path,
     ## Set ini weights in test config to point to selected snapshot weights
     dlc_cfg["init_weights"] = os.path.join(model_folder, "train", Snapshots[snapshotindex])
 
+    ## Set batchsize and number of outputs
+    dlc_cfg["batch_size"] = batch_size_inference #cfg["batch_size"] 
+    dlc_cfg["num_outputs"] = cfg.get("num_outputs", dlc_cfg.get("num_outputs", 1))
+
     return dlc_cfg, cfg
 
 ########################################################################################
-def setup_TF_graph_for_inference(cfg,
-                                 test_pose_cfg, #dlc_cfg: # pass config loaded, not path (use load_config())
-                                 batch_size_inference,
+def setup_TF_graph_for_inference(test_pose_cfg, #dlc_cfg: # pass config loaded, not path (use load_config())
                                  gpu_to_use):
 
     # see also: /home/sofia/DeepLabCut/deeplabcut/pose_estimation_tensorflow/core/predict.py
@@ -81,8 +84,6 @@ def setup_TF_graph_for_inference(cfg,
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
     tf.compat.v1.reset_default_graph()
-    test_pose_cfg["batch_size"] = batch_size_inference #cfg["batch_size"] 
-    test_pose_cfg["num_outputs"] = cfg.get("num_outputs", test_pose_cfg.get("num_outputs", 1))
 
     sess, inputs, outputs = predict.setup_pose_prediction(test_pose_cfg) 
 
@@ -103,7 +104,7 @@ def compute_batch_scmaps_per_frame(cfg,
     # Read  number of images
     nframes = len(framelist)
 
-    # Read image size
+    # Read image size (from first image)
     im = imread(os.path.join(parent_directory, 
                              framelist[0]), mode="skimage")
     
@@ -185,7 +186,13 @@ def compute_batch_scmaps_per_frame(cfg,
                 frames[batch_ind] = img_as_ubyte(im[cfg["y1"] : cfg["y2"], 
                                                     cfg["x1"] : cfg["x2"], :])
             else:
-                frames[batch_ind] = img_as_ubyte(im)
+                # frames[batch_ind] = img_as_ubyte(im)
+
+                try:
+                    frames[batch_ind] = img_as_ubyte(im)
+                except ValueError as e:
+                    im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
+                    frames[batch_ind] = img_as_ubyte(im)
 
             if batch_ind == batchsize - 1:
                 scmap, locref, pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs,
