@@ -156,7 +156,8 @@ def compute_batch_scmaps_per_frame(cfg,
                 batch_num * batchsize : batch_num * batchsize + batch_ind] = scmap[:batch_ind, :,:,:]
 
     pbar.close()
-    return list_scmaps_per_frame #, nframes, nx, ny
+    scmaps_all_frames = np.stack(list_scmaps_per_frame,axis=0)    
+    return scmaps_all_frames #, nframes, nx, ny
 
 ################################################
 def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
@@ -325,13 +326,13 @@ list_test_OOD_images = list(df_groundtruth.index[map_shuffle_id_to_test_OOD_idcs
 ######################################################
 # %%
 # Run inference on batch 
-list_scmaps_per_frame = compute_batch_scmaps_per_frame(cfg, 
-                                                        dlc_cfg, 
-                                                        sess, inputs, outputs, 
-                                                        os.path.dirname(cfg_path), 
-                                                        list_test_OOD_images, 
-                                                        batch_size_inference)
-scmaps_all_frames = np.stack(list_scmaps_per_frame,axis=0)    
+scmaps_all_frames = compute_batch_scmaps_per_frame(cfg, 
+                                                    dlc_cfg, 
+                                                    sess, inputs, outputs, 
+                                                    os.path.dirname(cfg_path), 
+                                                    list_test_OOD_images, 
+                                                    batch_size_inference)
+
 
 #    
 ###################################################################
