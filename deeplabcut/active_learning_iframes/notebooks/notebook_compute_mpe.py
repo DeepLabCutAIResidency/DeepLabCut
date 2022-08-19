@@ -200,8 +200,15 @@ if flag_plot_max_p_per_bdprt:
     ax2.set_ylabel('p', color='tab:orange')               
 plt.title('MPE/max p per bodypart')         
 plt.show()
+
+####################################################################
+
+
+
+
+
 ###################################################################
-# %% Visualise results
+# %% Visualise results on input image
 # Based on visualize.show_heatmaps(dlc_cfg, frame, scmap, pose)
 # visualize.waitforbuttonpress()
 import cv2
