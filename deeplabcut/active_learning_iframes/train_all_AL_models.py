@@ -8,17 +8,35 @@ import yaml
 
 
 #########################################
-# Input params
-parent_dir_path = '/home/sofia/datasets/Horse10_AL_unif_fr'
-model_prefix = 'Horse10_AL_unif100'
+## Input params
+# TODO: add if __main__
 
+# set up parser
+parser = argparse.ArgumentParser()
+parser.add_argument("parent_dir_path", 
+                    type=str,
+                    help="path to parent directory [required]")
+parser.add_argument("subdir_prefix_str", 
+                    type=str,
+                    help="prefix common to all subdirectories to train [required]")
+parser.add_argument("gpu_to_use", 
+                    type=int,
+                    help="id of gpu to use (as given by nvidia-smi) [required]")
+args = parser.parse_args()
+
+# get required parameters
+parent_dir_path = args.parent_dir_path #'/home/sofia/datasets/Horse10_AL_unif_OH'
+model_prefix = args.subdir_prefix_str #'Horse10_AL_unif000'
+GPU_TO_USE = args.gpu_to_use
+
+# get optional parameters
+# TODO: add to parser as optional
 MAX_SNAPSHOTS = 10
 DISPLAY_ITERS = 1000 # display loss every N iters; one iter processes one batch
 MAX_ITERS = 200_000
 SAVE_ITERS = 50000 # save snapshots every n iters
 TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
-GPU_TO_USE=2
 
 ########################################
 ## Set 'allow growth' before training (allow growth bug)
@@ -49,12 +67,12 @@ for md in list_models_dirs:
     ### Get list of training set **idcs** per shuffle
     # idcs follow list in config ojo
     dict_training_fraction_per_shuffle = {}
-    dict_training_idx_per_shuffle = {}   
+    dict_training_fraction_idx_per_shuffle = {}   
     for sh in list_shuffle_numbers:
         dict_training_fraction_per_shuffle[sh] =[float(re.search('_([0-9]*)shuffle{}.pickle'.format(sh), el).group(1))/100
                                                  for el in list_pickle_files_in_dataset_top_folder
                                                  if 'shuffle{}.pickle'.format(sh) in el][0]
-        dict_training_idx_per_shuffle[sh] = \
+        dict_training_fraction_idx_per_shuffle[sh] = \
             list_train_fractions_from_config.index(dict_training_fraction_per_shuffle[sh])
 
     ######################################
@@ -64,7 +82,7 @@ for md in list_models_dirs:
         ## Train this shuffle
         deeplabcut.train_network(config_path_one_model, 
                                  shuffle=sh,
-                                 trainingsetindex=dict_training_idx_per_shuffle[sh],
+                                 trainingsetindex=dict_training_fraction_idx_per_shuffle[sh], # index in list of training fraction
                                  max_snapshots_to_keep=MAX_SNAPSHOTS,
                                  displayiters=DISPLAY_ITERS,
                                  maxiters=MAX_ITERS,
