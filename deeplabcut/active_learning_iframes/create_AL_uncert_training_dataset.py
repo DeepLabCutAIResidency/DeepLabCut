@@ -53,29 +53,29 @@ from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import compute_m
 # parent directory data
 reference_dir_path = '/home/sofia/datasets/Horse10_AL_uncert_OH' 
 path_to_pickle_w_base_idcs = os.path.join(reference_dir_path,
-                                          'horses_AL_OH_train_test_idcs_split.pkl')
+                                          'horses_AL_OH_train_test_idcs_split.pkl') #TODO these should probably be a unique file, not copies over each AL approach
 path_to_h5_file = os.path.join(reference_dir_path,  
                               'training-datasets/iteration-0/',
-                              'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
+                              'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5') # do not use h5 in labeled-data!
 
 # models subdirectory prefix
 model_subdir_prefix = 'Horse10_AL_uncert{0:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
-list_fraction_AL_frames = [0, 25, 50, 75, 100] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
+list_fraction_AL_frames = [25, 50, 75, 100] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
-# uncertainty snapshot- use Horse10_AL_unif000 models to run inference
-gpu_to_use = 3
-snapshot_idx = 0 # snapshot saved at the following training iters: 50k, 10k, 150k, 200k
-model_subdir_prefix_for_uncert_snapshot = 'Horse10_AL_unif000_TEST' #----------
-cfg_path_for_uncert_snapshot = os.path.join(reference_dir_path,
-                                            model_subdir_prefix_for_uncert_snapshot,
+# evaluation of model's uncertainty on images- use Horse10_AL_unif000 models to run inference
+path_to_model_for_uncert_evaluation = '/home/sofia/datasets/Horse10_AL_unif_OH/Horse10_AL_unif000' # 'Horse10_AL_unif000_TEST' #----------
+cfg_path_for_uncert_snapshot = os.path.join(path_to_model_for_uncert_evaluation,
                                             'config.yaml') # common to all shuffles
+gpu_to_use = 0
+snapshot_idx = 0 # typically snapshots are saved at the following training iters: 50k, 10k, 150k, 200k
 
 # uncertainty metric params (MPE)
 batch_size_inference = 4 # cfg["batch_size"]; to compute scoremaps
+downsampled_img_ny_nx_nc = (162, 288, 3) # common desired size to all images (ChesnutHorseLight is double res than the rest!)
 min_px_btw_peaks = 2 # Peaks are the local maxima in a region of `2 * min_distance + 1` (i.e. peaks are separated by at least `min_distance`).
 min_peak_intensity = 0 #.001 #0.001 # 0.001
 max_n_peaks = 5 # float('inf')
-mpe_metric_per_frame_str = 'max' #['mean','max','median']
+mpe_metric_per_frame_str = 'max' # choose from ['mean','max','median']
 
 # train config template (with adam params)
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
@@ -107,36 +107,34 @@ for fr_AL_samples in list_fraction_AL_frames:
 ###########################################################
 # %% Compute uncertainty of AL train samples,
 # using the model trained on the base train samples + 0% of AL train samples
-# TODO: maybe this is better as a separate script?
+# TODO: this may be better as a separate script
 
 df_groundtruth = pd.read_hdf(path_to_h5_file)
 map_shuffle_id_to_AL_train_idcs_ranked = dict()
 NUM_SHUFFLES = len(map_shuffle_id_to_base_train_idcs.keys())
 for sh in range(1,NUM_SHUFFLES+1):
-    #---------------------------------------
-    # Get reference snapshot
+    # Set inference params in test config: init_weights (= snapshot), batchsize and number of outputs
     dlc_cfg, cfg = set_inference_params_in_test_cfg(cfg_path_for_uncert_snapshot,
                                                     batch_size_inference,
                                                     sh,
                                                     trainingsetindex = None, # if None, extracted from config based on shuffle number
                                                     modelprefix='',
                                                     snapshotindex=snapshot_idx)
-    # check snapshot path: dlc_cfg['init_weights']
 
     # Setup TF graph
     sess, inputs, outputs = setup_TF_graph_for_inference(dlc_cfg, #dlc_cfg: # pass config loaded, not path (use load_config())
                                                          gpu_to_use)
 
-
     # Prepare batch of images for this shuffle
     list_AL_train_images = list(df_groundtruth.index[map_shuffle_id_to_AL_train_idcs[sh]])
 
-    # Run inference on graph
+    # Run inference on AL train images
     scmaps_all_frames = compute_batch_scmaps_per_frame(cfg, 
                                                         dlc_cfg, 
                                                         sess, inputs, outputs, 
                                                         os.path.dirname(cfg_path_for_uncert_snapshot), 
                                                         list_AL_train_images, 
+                                                        downsampled_img_ny_nx_nc,
                                                         batch_size_inference)
 
     # Compute uncertainty (MPE) per bodypart and mean/max per frame
@@ -153,12 +151,12 @@ for sh in range(1,NUM_SHUFFLES+1):
                              'median': np.median(mpe_per_frame_and_bprt,axis=-1)}                                                             
 
     # Sort idcs by MPE metric and save 
-    list_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[sh], #idcs from AL train set
-                                                         mpe_metrics_per_frame[mpe_metric_per_frame_str]),
-                                                    key=lambda pair: pair[1],
-                                                    reverse=True)] # sort by the second element of the tuple
+    list_AL_train_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[sh], #idcs from AL train set
+                                                                  mpe_metrics_per_frame[mpe_metric_per_frame_str]),
+                                                        key=lambda pair: pair[1],
+                                                        reverse=True)] # sort by the second element of the tuple
     # list_AL_train_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_idcs_ranked])
-    map_shuffle_id_to_AL_train_idcs_ranked[sh] = list_idcs_ranked #idx_AL_train_idcs_to_transfer
+    map_shuffle_id_to_AL_train_idcs_ranked[sh] = list_AL_train_idcs_ranked #idx_AL_train_idcs_to_transfer
 
 #########################################################################################
 # %%
@@ -183,19 +181,12 @@ for fr_AL_samples in list_fraction_AL_frames:
     test_idcs_one_model = []
     list_training_fraction_per_shuffle = []
     for sh in range(1,NUM_SHUFFLES+1):
-        # get base list of train and test_AL idcs for this shuffle
+        # get list of base train for this shuffle
         list_base_train_idcs = map_shuffle_id_to_base_train_idcs[sh] 
-        list_AL_train_idcs = map_shuffle_id_to_AL_train_idcs[sh]
-
+        
         #---------------------------------------------------------------------------
-        # Compute uncertainty
-        # Compute indices of AL train indices to transfer to train set ---sample randomly instead?
-        # n_AL_samples = math.floor(fr_AL_samples*len(list_AL_train_idcs)/100)
-        # idx_AL_train_idcs_to_transfer = [int(l) for l in np.floor(np.linspace(0,
-        #                                                                        len(list_AL_train_idcs)-1,
-        #                                                                        n_AL_samples,
-        #                                                                        endpoint=False))] #endpoint=True makes last sample=stop value
-        n_AL_samples = math.floor(fr_AL_samples*len(list_AL_train_idcs)/100)
+        # get list of top x% AL train idcs, ranked by desired mpe metric
+        n_AL_samples = math.floor(fr_AL_samples*len(map_shuffle_id_to_AL_train_idcs_ranked[sh])/100)
         list_AL_train_idcs_to_transfer = map_shuffle_id_to_AL_train_idcs_ranked[sh][:n_AL_samples]
         #---------------------------------------------------------------------------
 
@@ -246,7 +237,7 @@ for fr_AL_samples in list_fraction_AL_frames:
 
 # %%
 #########################################
-# Check AL000
+# Check AL000: picke idcs against df data
 fr_AL_samples = 50
 shuffle_id = 3
 
