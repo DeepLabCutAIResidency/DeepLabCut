@@ -95,6 +95,7 @@ def compute_batch_scmaps_per_frame(cfg,
                                     sess, inputs, outputs, 
                                     parent_directory, 
                                     framelist, 
+                                    downsampled_img_ny_nx_nc, # 162, 288, 3
                                     batchsize):
     """
     Batchwise prediction of scmap for frame list in directory.
@@ -104,11 +105,15 @@ def compute_batch_scmaps_per_frame(cfg,
     # Read  number of images
     nframes = len(framelist)
 
-    # Read image size (from first image)
-    im = imread(os.path.join(parent_directory, 
-                             framelist[0]), mode="skimage")
+    # Parse image downsampled size
+    ny, nx, nc = downsampled_img_ny_nx_nc # 162, 288, 3
+
+    # # Read first image's size----
+    # OJO! this won't give 'common' downsampled img size if first image is from ChestnutHorseLight (that video is at double resolution)
+    # im = imread(os.path.join(parent_directory, 
+    #                          framelist[0]), mode="skimage")
     
-    ny, nx, nc = np.shape(im)
+    # ny, nx, nc = np.shape(im)
     # print("Overall # of frames: ", nframes,
     #       " found with (before cropping) frame dimensions: ", nx,ny)
 
@@ -119,7 +124,7 @@ def compute_batch_scmaps_per_frame(cfg,
     #                          ncols_scmap,
     #                          n_bdprts))
 
-    ## Setup cropping params if required
+    ## Setup cropping params if required----croppin relative to donwsampled img right?
     if cfg["cropping"]:
         print("Cropping based on the x1 = %s x2 = %s y1 = %s y2 = %s. You can adjust the cropping coordinates in the config.yaml file."
                % (cfg["x1"], cfg["x2"], cfg["y1"], cfg["y2"]))
@@ -155,6 +160,11 @@ def compute_batch_scmaps_per_frame(cfg,
 
             # read img
             im = imread(os.path.join(parent_directory, framename), mode="skimage")
+            #---------------------------------------------------
+            if im.shape != downsampled_img_ny_nx_nc:
+                im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
+            #---------------------------------------------------
+
 
             # crop if req
             if cfg["cropping"]:
@@ -181,18 +191,16 @@ def compute_batch_scmaps_per_frame(cfg,
 
             im = imread(os.path.join(parent_directory, framename), 
                         mode="skimage")
-            
+            #---------------------------------------------------
+            if im.shape != downsampled_img_ny_nx_nc:
+                im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
+            #---------------------------------------------------
+
             if cfg["cropping"]:
                 frames[batch_ind] = img_as_ubyte(im[cfg["y1"] : cfg["y2"], 
                                                     cfg["x1"] : cfg["x2"], :])
             else:
-                # frames[batch_ind] = img_as_ubyte(im)
-
-                try:
-                    frames[batch_ind] = img_as_ubyte(im)
-                except ValueError as e:
-                    im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
-                    frames[batch_ind] = img_as_ubyte(im)
+                frames[batch_ind] = img_as_ubyte(im)
 
             if batch_ind == batchsize - 1:
                 scmap, locref, pose = predict.getposeNP(frames, dlc_cfg, sess, inputs, outputs,
