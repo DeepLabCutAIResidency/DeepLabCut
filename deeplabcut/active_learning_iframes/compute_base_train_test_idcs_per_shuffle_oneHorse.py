@@ -193,7 +193,7 @@ if __name__ == "__main__":
     with open(output_dirs_pickle_path,'wb') as file:
         pickle.dump([map_shuffle_id_to_base_train_dirs_w_nfiles,
                      map_shuffle_id_to_AL_train_dirs_w_nfiles,
-                     map_shuffle_id_to_OOD_test_dirs_w_nfiles], file)
+                     map_shuffle_id_to_OOD_test_dirs_w_nfiles], file) # can I do pickle loading more failsafe against variables mixup? (rn, I need to check this script to see in which order to unpack the variables!)
 
     # idcs per shuffle
     with open(output_idcs_pickle_path,'wb') as file:
