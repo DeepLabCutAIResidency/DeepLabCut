@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import pickle
 
-# import cv2
+import cv2
 import numpy as np
 import pandas as pd
 import math
@@ -42,6 +42,7 @@ def compute_batch_scmaps_per_frame(cfg,
                                     sess, inputs, outputs, 
                                     parent_directory, 
                                     framelist, 
+                                    downsampled_img_ny_nx_nc, # 162, 288, 3
                                     batchsize):
     """
     Batchwise prediction of scmap for frame list in directory.
@@ -51,11 +52,15 @@ def compute_batch_scmaps_per_frame(cfg,
     # Read  number of images
     nframes = len(framelist)
 
-    # Read image size
-    im = imread(os.path.join(parent_directory, 
-                             framelist[0]), mode="skimage")
+    # Parse image downsampled size
+    ny, nx, nc = downsampled_img_ny_nx_nc # 162, 288, 3
+
+    # # Read first image's size----
+    # OJO! this won't give 'common' downsampled img size if first image is from ChestnutHorseLight (that video is at double resolution)
+    # im = imread(os.path.join(parent_directory, 
+    #                          framelist[0]), mode="skimage")
     
-    ny, nx, nc = np.shape(im)
+    # ny, nx, nc = np.shape(im)
     # print("Overall # of frames: ", nframes,
     #       " found with (before cropping) frame dimensions: ", nx,ny)
 
@@ -102,6 +107,10 @@ def compute_batch_scmaps_per_frame(cfg,
 
             # read img
             im = imread(os.path.join(parent_directory, framename), mode="skimage")
+            #---------------------------------------------------
+            if im.shape != downsampled_img_ny_nx_nc:
+                im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
+            #---------------------------------------------------
 
             # crop if req
             if cfg["cropping"]:
@@ -128,7 +137,10 @@ def compute_batch_scmaps_per_frame(cfg,
 
             im = imread(os.path.join(parent_directory, framename), 
                         mode="skimage")
-            
+            #---------------------------------------------------
+            if im.shape != downsampled_img_ny_nx_nc:
+                im = cv2.resize(im, dsize=(nx,ny), interpolation=cv2.INTER_CUBIC)
+            #---------------------------------------------------
             if cfg["cropping"]:
                 frames[batch_ind] = img_as_ubyte(im[cfg["y1"] : cfg["y2"], 
                                                     cfg["x1"] : cfg["x2"], :])
@@ -246,10 +258,11 @@ modelprefix = ''
 
 # Samples
 batch_size_inference = 4
+downsampled_img_ny_nx_nc = (162, 288, 3)
 path_to_h5_file = os.path.join(os.path.dirname(cfg_path),
                              'training-datasets',
                              'iteration-0/UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5')
-path_to_pickle_w_base_idcs = '/home/sofia/datasets/horses_AL_train_test_idcs_split.pkl'
+path_to_pickle_w_base_idcs = '/home/sofia/datasets/Horse10_AL_uncert_OH/horses_AL_OH_train_test_idcs_split.pkl'
 
 # MPE params
 min_px_btw_peaks = 2 # Peaks are the local maxima in a region of `2 * min_distance + 1` (i.e. peaks are separated by at least `min_distance`).
@@ -258,7 +271,7 @@ max_n_peaks = 5#float('inf')
 flag_plot_max_p_per_bdprt = True
 
 # GPU
-gpu_to_use = 1
+gpu_to_use = 0
 ##################################################################################################
 # %%
 ## Load model config
@@ -314,14 +327,15 @@ sess, inputs, outputs = predict.setup_pose_prediction(dlc_cfg) # pass config loa
 # Load train/test base indices from pickle
 with open(path_to_pickle_w_base_idcs,'rb') as file:
     # pickle.load(file)
-    [map_shuffle_id_to_train_idcs,
-     map_shuffle_id_to_test_AL_idcs,
-     map_shuffle_id_to_test_OOD_idcs]=pickle.load(file)
+    [map_shuffle_id_to_base_train_idcs,
+      map_shuffle_id_to_AL_train_idcs,
+      map_shuffle_id_to_OOD_test_idcs]=pickle.load(file)
 
 # Get path for test OOD idcs
 df_groundtruth = pd.read_hdf(path_to_h5_file)
 
-list_test_OOD_images = list(df_groundtruth.index[map_shuffle_id_to_test_OOD_idcs[shuffle]])
+# list_test_OOD_images = list(df_groundtruth.index[map_shuffle_id_to_OOD_test_idcs[shuffle]])
+list_AL_train_images = list(df_groundtruth.index[map_shuffle_id_to_AL_train_idcs[shuffle]])
 
 ######################################################
 # %%
@@ -330,7 +344,8 @@ scmaps_all_frames = compute_batch_scmaps_per_frame(cfg,
                                                     dlc_cfg, 
                                                     sess, inputs, outputs, 
                                                     os.path.dirname(cfg_path), 
-                                                    list_test_OOD_images, 
+                                                    list_AL_train_images, #list_test_OOD_images, 
+                                                    downsampled_img_ny_nx_nc,
                                                     batch_size_inference)
 
 
@@ -350,12 +365,21 @@ mean_mpe_per_frame = np.mean(mpe_per_frame_and_bprt,axis=-1)
 max_mpe_per_frame = np.max(mpe_per_frame_and_bprt,axis=-1)
 median_mpe_per_frame = np.median(mpe_per_frame_and_bprt,axis=-1)
 
-# sort idcs by mean_mpe
-list_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_test_OOD_idcs[shuffle], #idcs from OOD set
-                                                     mean_mpe_per_frame),
-                                                key=lambda pair: pair[1],
-                                                reverse=True)] # sort by the second element of the tuple
-list_test_OOD_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_idcs_ranked])
+# sort AL train idcs by mean_mpe
+list_AL_train_idcs_ranked_by_mean_mpe =\
+    [id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[shuffle], #idcs from OOD set
+                                       mean_mpe_per_frame),
+                                   key=lambda pair: pair[1],
+                                   reverse=True)] # sort by the second element of the tuple
+list_AL_train_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_AL_train_idcs_ranked_by_mean_mpe])
+
+# sort AL train idcs by mean_mpe
+list_AL_train_idcs_ranked_by_max_mpe =\
+    [id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[shuffle], #idcs from OOD set
+                                       max_mpe_per_frame),
+                                   key=lambda pair: pair[1],
+                                   reverse=True)] # sort by the second element of the tuple
+list_AL_train_images_sorted_by_max_mpe = list(df_groundtruth.index[list_AL_train_idcs_ranked_by_max_mpe])
 ###################################################################
 # %% plot results per frame
 mean_max_p_per_frame = np.mean(max_p_per_frame_and_bprt,axis=-1)
@@ -369,6 +393,8 @@ ax1.set_ylim([0.55,1.05])
 ax2=ax1.twinx()
 ax2.plot(mean_mpe_per_frame,
         color='tab:blue')
+# ax2.plot(max_mpe_per_frame,'.',
+#         color='tab:red')
 ax2.set_ylabel('MPE', color='tab:blue')
 plt.show()
 
@@ -444,89 +470,89 @@ else:
 ###################################################################
 # %%  Plot uncertainty score per frame and bodypart
 
-# scmap_one_frame = list_scmaps_per_frame[0]
-all_joints_names = dlc_cfg["all_joints_names"]
+# # scmap_one_frame = list_scmaps_per_frame[0]
+# all_joints_names = dlc_cfg["all_joints_names"]
 
-list_local_max_coordinates = [] # per bodypart
-list_local_max_pvalues = []
-list_local_max_softmax = []
-list_local_max_entropy = []
+# list_local_max_coordinates = [] # per bodypart
+# list_local_max_pvalues = []
+# list_local_max_softmax = []
+# list_local_max_entropy = []
 
-# for each frame
-for f in [25]:#range(scmaps_all_frames.shape[0]):
-    # for each bdprt
-    for bp in range(scmaps_all_frames.shape[-1]):
-        local_max_coordinates_rc = peak_local_max(scmaps_all_frames[f,:,:,bp],
-                                                    min_distance=min_px_btw_peaks,
-                                                    threshold_abs=min_peak_intensity,
-                                                    exclude_border=False,
-                                                    num_peaks=max_n_peaks) 
+# # for each frame
+# for f in [25]:#range(scmaps_all_frames.shape[0]):
+#     # for each bdprt
+#     for bp in range(scmaps_all_frames.shape[-1]):
+#         local_max_coordinates_rc = peak_local_max(scmaps_all_frames[f,:,:,bp],
+#                                                     min_distance=min_px_btw_peaks,
+#                                                     threshold_abs=min_peak_intensity,
+#                                                     exclude_border=False,
+#                                                     num_peaks=max_n_peaks) 
                                         
-        list_local_max_coordinates.append(local_max_coordinates_rc) #Peaks are the local maxima in a region of 2 * min_distance + 1 
+#         list_local_max_coordinates.append(local_max_coordinates_rc) #Peaks are the local maxima in a region of 2 * min_distance + 1 
             
 
-        # pvalues
-        local_max_pvalues = scmaps_all_frames[f,
-                                              local_max_coordinates_rc[:,0],
-                                              local_max_coordinates_rc[:,1],
-                                              bp] 
-        list_local_max_pvalues.append(local_max_pvalues)
+#         # pvalues
+#         local_max_pvalues = scmaps_all_frames[f,
+#                                               local_max_coordinates_rc[:,0],
+#                                               local_max_coordinates_rc[:,1],
+#                                               bp] 
+#         list_local_max_pvalues.append(local_max_pvalues)
 
-        ### Softmax and entropy
-        local_max_softmax = softmax(local_max_pvalues, axis=0)
-        list_local_max_softmax.append(local_max_softmax)
-        ### Entropy
-        list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
-        #----------
-        # plot 
-        plt.matshow(scmaps_all_frames[f,:,:,bp])
-        plt.scatter(local_max_coordinates_rc[:,1],
-                    local_max_coordinates_rc[:,0],
-                    10,'r')
-        for k in range(local_max_coordinates_rc.shape[0]):
-            plt.text(local_max_coordinates_rc[k,1],
-                    local_max_coordinates_rc[k,0],
-                    '{:.2f}'.format(local_max_pvalues[k]),
-                    fontsize=12,
-                    fontdict={'color':'r'})            
-        plt.title('{} - local maxima and confidence (MPE={:.2f})'.format(all_joints_names[bp],
-                                                                        list_local_max_entropy[-1]))    
-        plt.show() 
+#         ### Softmax and entropy
+#         local_max_softmax = softmax(local_max_pvalues, axis=0)
+#         list_local_max_softmax.append(local_max_softmax)
+#         ### Entropy
+#         list_local_max_entropy.append(entropy(local_max_softmax,axis=0))
+#         #----------
+#         # plot 
+#         plt.matshow(scmaps_all_frames[f,:,:,bp])
+#         plt.scatter(local_max_coordinates_rc[:,1],
+#                     local_max_coordinates_rc[:,0],
+#                     10,'r')
+#         for k in range(local_max_coordinates_rc.shape[0]):
+#             plt.text(local_max_coordinates_rc[k,1],
+#                     local_max_coordinates_rc[k,0],
+#                     '{:.2f}'.format(local_max_pvalues[k]),
+#                     fontsize=12,
+#                     fontdict={'color':'r'})            
+#         plt.title('{} - local maxima and confidence (MPE={:.2f})'.format(all_joints_names[bp],
+#                                                                         list_local_max_entropy[-1]))    
+#         plt.show() 
 
-        plt.plot(local_max_softmax,'.-')
-        plt.title('{} - normalised prob across maxima (MPE={:.2f})'.format(all_joints_names[bp], 
-                                                                        list_local_max_entropy[-1]))
-        plt.xlabel('local maximum id')
-        plt.ylabel('normalised prob')
-        plt.show()
-        #---------
+#         plt.plot(local_max_softmax,'.-')
+#         plt.title('{} - normalised prob across maxima (MPE={:.2f})'.format(all_joints_names[bp], 
+#                                                                         list_local_max_entropy[-1]))
+#         plt.xlabel('local maximum id')
+#         plt.ylabel('normalised prob')
+#         plt.show()
+#         #---------
 
-    #---------------------------------------
-    ## Compate MPE and p metrics
-    fig, ax1 = plt.subplots()
+#     #---------------------------------------
+#     ## Compate MPE and p metrics
+#     fig, ax1 = plt.subplots()
 
-    # MPE in ax1
-    ax1.plot(list(range(len(list_local_max_entropy))),
-            list_local_max_entropy,
-            '.-',
-            color='tab:blue')   
-    ax1.set_xticks(list(range(len(list_local_max_entropy))),
-                    all_joints_names,
-                    rotation = 90,
-                    ha='center')
-    ax1.set_ylabel('MPE', color='tab:blue')
-    # ax1.set_ylim([-0.05,2])
+#     # MPE in ax1
+#     ax1.plot(list(range(len(list_local_max_entropy))),
+#             list_local_max_entropy,
+#             '.-',
+#             color='tab:blue')   
+#     ax1.set_xticks(list(range(len(list_local_max_entropy))),
+#                     all_joints_names,
+#                     rotation = 90,
+#                     ha='center')
+#     ax1.set_ylabel('MPE', color='tab:blue')
+#     # ax1.set_ylim([-0.05,2])
 
-    # optionally: max p per bodypart in ax2
-    if flag_plot_max_p_per_bdprt:
-        ax2 = ax1.twinx()
-        # p value per bdprt in ax2         
-        ax2.plot(list(range(len(list_local_max_entropy))),
-                [np.max(x) for x in list_local_max_pvalues],
-                '.-',
-                color='tab:orange')          
-        ax2.set_ylabel('p', color='tab:orange')               
-    plt.title('MPE/max p per bodypart')         
-    plt.show()
+#     # optionally: max p per bodypart in ax2
+#     if flag_plot_max_p_per_bdprt:
+#         ax2 = ax1.twinx()
+#         # p value per bdprt in ax2         
+#         ax2.plot(list(range(len(list_local_max_entropy))),
+#                 [np.max(x) for x in list_local_max_pvalues],
+#                 '.-',
+#                 color='tab:orange')          
+#         ax2.set_ylabel('p', color='tab:orange')               
+#     plt.title('MPE/max p per bodypart')         
+#     plt.show()
 
 
