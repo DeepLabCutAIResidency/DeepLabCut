@@ -250,7 +250,7 @@ def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
 # %%
 ## Inputs 
 # Model to run inference on
-cfg_path = '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'
+cfg_path = '/home/sofia/datasets/Horse10_AL_unif_OH/Horse10_AL_unif000/config.yaml'
     # '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/config.yaml'--100k ITERS
     # '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'--200k ITERS
 shuffle = 1
@@ -258,6 +258,7 @@ modelprefix = ''
 
 # Samples
 batch_size_inference = 4
+snapshotindex = 0
 downsampled_img_ny_nx_nc = (162, 288, 3)
 path_to_h5_file = os.path.join(os.path.dirname(cfg_path),
                              'training-datasets',
@@ -300,7 +301,6 @@ increasing_indices = np.argsort([int(m.split("-")[1]) for m in Snapshots])
 Snapshots = Snapshots[increasing_indices]
 
 # Use last snapshot
-snapshotindex = -1
 print("Using %s" % Snapshots[snapshotindex], "for model", model_folder)
 
 # Set ini weights in test config to snapshot wights
@@ -380,6 +380,8 @@ list_AL_train_idcs_ranked_by_max_mpe =\
                                    key=lambda pair: pair[1],
                                    reverse=True)] # sort by the second element of the tuple
 list_AL_train_images_sorted_by_max_mpe = list(df_groundtruth.index[list_AL_train_idcs_ranked_by_max_mpe])
+
+df_groundtruth.index[list_AL_train_idcs_ranked_by_max_mpe[:5]]
 ###################################################################
 # %% plot results per frame
 mean_max_p_per_frame = np.mean(max_p_per_frame_and_bprt,axis=-1)
