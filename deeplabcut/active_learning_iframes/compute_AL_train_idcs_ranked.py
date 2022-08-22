@@ -1,6 +1,7 @@
 '''
 
-
+Script to rank active learning train idcs by influence metric 
+(as defined in Liu and Ferrari, Active learning for human pose estimation)
 https://pytorch.org/hub/pytorch_vision_alexnet/
 
 '''
