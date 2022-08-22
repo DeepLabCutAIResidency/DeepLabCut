@@ -154,7 +154,7 @@ for sh in range(1,NUM_SHUFFLES+1):
     list_AL_train_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[sh], #idcs from AL train set
                                                                   mpe_metrics_per_frame[mpe_metric_per_frame_str]),
                                                         key=lambda pair: pair[1],
-                                                        reverse=True)] # sort by the second element of the tuple
+                                                        reverse=True)] # sort by the second element of the tuple in desc order
     # list_AL_train_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_idcs_ranked])
     map_shuffle_id_to_AL_train_idcs_ranked[sh] = list_AL_train_idcs_ranked #idx_AL_train_idcs_to_transfer
 
