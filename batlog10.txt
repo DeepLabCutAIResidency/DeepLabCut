@@ -1,0 +1,125 @@
+2022-08-15 10:19:07.801245: I tensorflow/core/util/util.cc:169] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+/home/jonas2/miniconda/envs/dlc/lib/python3.8/site-packages/statsmodels/compat/pandas.py:65: FutureWarning: pandas.Int64Index is deprecated and will be removed from pandas in a future version. Use pandas.Index with the appropriate dtype instead.
+  from pandas import Int64Index as NumericIndex
+/home/jonas2/DeepLabCut/deeplabcut/__init__.py:81: UserWarning: 
+        As PyTorch is not installed, unsupervised identity learning will not be available.
+        Please run `pip install torch`, or ignore this warning.
+        
+  warnings.warn(
+Config:
+{'all_joints': [[0],
+                [1],
+                [2],
+                [3],
+                [4],
+                [5],
+                [6],
+                [7],
+                [8],
+                [9],
+                [10],
+                [11],
+                [12],
+                [13],
+                [14],
+                [15]],
+ 'all_joints_names': ['t3L',
+                      'wstL',
+                      't5L',
+                      'elbL',
+                      'shdL',
+                      'ankL',
+                      'nl',
+                      'str',
+                      'lmb',
+                      'shdR',
+                      'ankR',
+                      'elbR',
+                      'wstR',
+                      't5R',
+                      't3R',
+                      'tail'],
+ 'alpha_r': 0.02,
+ 'apply_prob': 0.5,
+ 'batch_size': 8,
+ 'contrast': {'clahe': True,
+              'claheratio': 0.1,
+              'histeq': True,
+              'histeqratio': 0.1},
+ 'convolution': {'edge': False,
+                 'emboss': {'alpha': [0.0, 1.0], 'strength': [0.5, 1.5]},
+                 'embossratio': 0.1,
+                 'sharpen': False,
+                 'sharpenratio': 0.3},
+ 'crop_pad': 0,
+ 'cropratio': 0.4,
+ 'dataset': 'training-datasets/iteration-0/UnaugmentedDataSet_geneva_protocol_paper_austin_2020_bat_dataAug3/geneva_protocol_paper_austin_2020_bat_data_DLC80shuffle17.mat',
+ 'dataset_type': 'imgaug',
+ 'decay_steps': 30000,
+ 'deterministic': False,
+ 'display_iters': 1000,
+ 'fg_fraction': 0.25,
+ 'fliplr': True,
+ 'gaussian_blur': False,
+ 'gaussian_blur_params': {'sigma': [0.5, 4.0]},
+ 'global_scale': 0.8,
+ 'init_weights': '/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/models/pretrained/resnet_v1_101.ckpt',
+ 'intermediate_supervision': False,
+ 'intermediate_supervision_layer': 12,
+ 'location_refinement': True,
+ 'locref_huber_loss': True,
+ 'locref_loss_weight': 0.05,
+ 'locref_stdev': 7.2801,
+ 'log_dir': 'log',
+ 'lr_init': 0.0005,
+ 'max_input_size': 1500,
+ 'mean_pixel': [123.68, 116.779, 103.939],
+ 'metadataset': 'training-datasets/iteration-0/UnaugmentedDataSet_geneva_protocol_paper_austin_2020_bat_dataAug3/Documentation_data-geneva_protocol_paper_austin_2020_bat_data_80shuffle17.pickle',
+ 'min_input_size': 64,
+ 'mirror': False,
+ 'multi_stage': True,
+ 'multi_step': [[0.0001, 7500], ['5e-05', 12000], ['1e-05', 150000]],
+ 'net_type': 'resnet_101',
+ 'num_joints': 16,
+ 'optimizer': 'adam',
+ 'pairwise_huber_loss': False,
+ 'pairwise_predict': False,
+ 'partaffinityfield_predict': False,
+ 'pos_dist_thresh': 17,
+ 'project_path': '/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03',
+ 'regularize': False,
+ 'rotation': 25,
+ 'rotratio': 0.4,
+ 'save_iters': 50000,
+ 'scale_jitter_lo': 0.5,
+ 'scale_jitter_up': 1.25,
+ 'scoremap_dir': 'test',
+ 'shuffle': True,
+ 'smfactor': 4,
+ 'snapshot_prefix': '/home/jonas2/DLC_files/projects/geneva_protocol_paper_austin_2020_bat_data-DLC-2022-08-03/data_augm_01_fliplr/dlc-models/iteration-0/geneva_protocol_paper_austin_2020_bat_dataAug3-trainset80shuffle17/train/snapshot',
+ 'stride': 4,
+ 'symmetric_pairs': [[0, 14], [1, 12], [2, 13], [3, 11], [4, 9], [5, 10]],
+ 'weigh_negatives': False,
+ 'weigh_only_present_joints': False,
+ 'weigh_part_predictions': False,
+ 'weight_decay': 0.0001}
+/home/jonas2/miniconda/envs/dlc/lib/python3.8/site-packages/tensorflow/python/keras/engine/base_layer_v1.py:1694: UserWarning: `layer.apply` is deprecated and will be removed in a future version. Please use `layer.__call__` method instead.
+  warnings.warn('`layer.apply` is deprecated and '
+Loading DLC 2.2.1.1...
+DLC loaded in light mode; you cannot use any GUI (labeling, relabeling and standalone GUI)
+Selecting single-animal trainer
+Batch Size is 8
+Traceback (most recent call last):
+  File "deeplabcut/bat_chiroptera_scripts/train_script_20220815.py", line 10, in <module>
+    deeplabcut.train_network(
+  File "/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/training.py", line 218, in train_network
+    raise e
+  File "/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/training.py", line 207, in train_network
+    train(
+  File "/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/core/train.py", line 170, in train
+    losses = PoseNetFactory.create(cfg).train(batch)
+  File "/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/nnets/base.py", line 33, in train
+    loss = {"part_loss": add_part_loss("part_pred")}
+  File "/home/jonas2/DeepLabCut/deeplabcut/pose_estimation_tensorflow/nnets/base.py", line 30, in add_part_loss
+    batch[Batch.part_score_targets], heads[pred_layer], part_score_weights
+KeyError: 'part_pred'

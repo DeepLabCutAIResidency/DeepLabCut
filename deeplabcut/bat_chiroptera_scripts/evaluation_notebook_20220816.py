@@ -73,7 +73,7 @@ for i, path in enumerate(image_paths):
             test_inds_cam3[j].append(i)
 
 # %%
-shuffles = [1, 3, 13, 15]
+shuffles = [1, 2, 3, 4, 13, 14, 15, 16, 19]
 nshuffles = len(shuffles)
 mean_cam1 = np.zeros([nshuffles,7]) # shuffle x movie
 mean_cam2 = np.zeros([nshuffles,7])
@@ -94,13 +94,15 @@ deviPcut_cam3 = np.zeros([nshuffles,7])
 # %%
 
 for i, shuffle in enumerate(shuffles):
-    if shuffle == 13 or shuffle ==15:        
+    if shuffle > 10:        
         modelprefix = "data_augm_01_fliplr"
-        snapshot = 1 #100k iterations
+                
     else:
         modelprefix = "data_augm_00_none"
-        snapshot = 1 #100k iterations
-
+    if shuffle == 14: snapshot = 11
+    elif shuffle == 19: snapshot = 0
+    else: snapshot = 1
+    
     trainFractionIndex = np.mod(shuffle-1,4)
     (
         ErrorDistribution_all,
@@ -138,24 +140,20 @@ for i, shuffle in enumerate(shuffles):
 # %%
 
 for i, shuffle in enumerate(shuffles):
-    if np.mod(shuffle,4) == 0:
+    if shuffle > 10:
         linestyle = '-'
-    elif np.mod(shuffle,4) == 1:
+    else:
         linestyle = '--'
-    elif np.mod(shuffle,4) == 2:
-        linestyle = '-.'
-    elif np.mod(shuffle,4) == 3:
-        linestyle = ':'
-    else:
-        linestyle = '-'
-    
-    if 0 <= shuffle <= 3:
+        
+    if shuffle == 1 or shuffle ==13:
         color = (0, 0.4470, 0.7410)
-    elif 4 <= shuffle <= 7:
+    elif shuffle == 2 or shuffle ==14:
         color = (0.8500, 0.3250, 0.0980)
-    elif 8 <= shuffle <= 11:
+    elif shuffle == 3 or shuffle ==15:
         color = (0.9290, 0.6940, 0.1250)
-    else:
+    elif shuffle == 4 or shuffle ==16:
+        color = (0.4940, 0.1840, 0.5560)
+    elif shuffle == 19:
         color = 'black'
 
 
@@ -177,6 +175,50 @@ for i, shuffle in enumerate(shuffles):
     plt.errorbar(movie_number,meanPcut_cam3[i,:], deviPcut_cam3[i,:,], linestyle=linestyle, color = color)
     plt.ylim([0, 50])
     plt.yticks([0, 5, 10, 20, 30, 40, 50])
+    #plt.legend(["Half",'Half+ref',"Full", "Full+ref","Half Flip",'Half+ref Flip',"Full Flip", "Full+ref Flip"])
+
+# %% just half
+for i, shuffle in enumerate(shuffles):
+    if shuffle not in [1,3,13,15,19]: continue #
+    
+    if shuffle > 10:
+        linestyle = '-'
+    else:
+        linestyle = '--'
+        
+    if shuffle == 0 or shuffle ==12:
+        color = (0, 0.4470, 0.7410) #blue
+    elif shuffle == 1 or shuffle ==13:
+        color = (0.8500, 0.3250, 0.0980) # red
+    elif shuffle == 3 or shuffle ==15: 
+        color = (0.9290, 0.6940, 0.1250) #yellow
+    elif shuffle == 4 or shuffle ==16:
+        color = (0.4940, 0.1840, 0.5560) #purple
+    elif shuffle == 19:
+        color = 'black'
+
+
+    movie_number = list(range(1,8))
+    movie_number = [x - 6/100 + shuffle/100 for x in movie_number]
+    
+    plt.rcParams['figure.figsize'] = [15, 10]
+    plt.subplot(3,1,1)
+    plt.errorbar(movie_number,meanPcut_cam1[i,:], deviPcut_cam1[i,:,], linestyle=linestyle, color = color)
+    #plt.legend(["Half",'Half+ref',"Full", "Full+ref","Half IS",'Half+ref IS',"Full IS", "Full+ref IS", "Half MS",'Half+ref MS',"Full MS", "Full+ref MS"])
+    plt.ylim([0, 10])
+    plt.yticks([0, 1.7, 5, 10])
+    #plt.yticks([0, 2, 5, 10, 20, 30, 40, 50])
+
+    plt.subplot(3,1,2)
+    plt.errorbar(movie_number,meanPcut_cam2[i,:], deviPcut_cam2[i,:,], linestyle=linestyle, color = color)
+    plt.ylim([0, 10])
+    plt.yticks([0, 1.7, 5, 10])
+    #plt.yticks([0, 2, 5, 10, 20, 30, 40, 50])
+    plt.subplot(3,1,3)
+    plt.errorbar(movie_number,meanPcut_cam3[i,:], deviPcut_cam3[i,:,], linestyle=linestyle, color = color)
+    plt.ylim([0, 10])
+    plt.yticks([0, 1.7, 5, 10])
+    #plt.yticks([0, 2, 5, 10, 20, 30, 40, 50])
     #plt.legend(["Half",'Half+ref',"Full", "Full+ref","Half IS",'Half+ref IS',"Full IS", "Full+ref IS", "Half MS",'Half+ref MS',"Full MS", "Full+ref MS"])
 
 # %% A, shuffle 1

@@ -216,8 +216,8 @@ project_path = cfg["project_path"] # or: os.path.dirname(config_path) #dlc_model
 training_datasets_path = os.path.join(project_path, "training-datasets")
 #%%
 # Get shuffles
-shuffles = [13, 15, 16, 17, 18, 19, 20]
-trainingsetindices = [0, 2, 3, 0, 1, 2, 3]
+shuffles = [17, 18, 19, 20]
+trainingsetindices = [0, 1, 2, 3]
 # %%
 # Get train and test pose config file paths from base project, for each shuffle
 list_base_train_pose_config_file_paths = []
@@ -272,7 +272,7 @@ for j, (shuffle, trainingsetindex) in enumerate(zip(shuffles,trainingsetindices)
 # %%
 # %%
 edits_dict = dict()
-edits_dict["rotation"] = 25
+edits_dict["rotation"] = 90
 edits_dict["gaussian_blur"] = False
 edits_dict["gaussian_blur_params"] = {"sigma": (0.5, 4.0)}
 edits_dict["scale_jitter_lo"] = .5
@@ -284,7 +284,7 @@ edits_dict["fliplr"] = True
 train_edits_dict = {}
 dict_optimizer = {'optimizer':'adam',
     'batch_size': 8,
-    'multi_step': [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 150000]]} # if no yaml file passed, initialise as an empty dict
+    'multi_step': [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 250000]]} # if no yaml file passed, initialise as an empty dict
 train_edits_dict.update({'optimizer': dict_optimizer['optimizer'], #'adam',
     'batch_size': dict_optimizer['batch_size'], #16,
     'multi_step': dict_optimizer['multi_step']}) # learning rate schedule for adam: [[1e-4, 7500], [5 * 1e-5, 12000], [1e-5, 200000]]
@@ -294,21 +294,12 @@ for j, shuffle in enumerate(shuffles):
     edit_config(str(list_train_pose_config_path_per_shuffle[j]), edits_dict)
     edit_config(str(list_train_pose_config_path_per_shuffle[j]),
                         train_edits_dict)
-    if 13 <= shuffle <= 16:
+    if 13 <= shuffle <= 20:
         edit_config(str(list_train_pose_config_path_per_shuffle[j]),
                 {'intermediate_supervision': False})
         edit_config(str(list_train_pose_config_path_per_shuffle[j]),
                 {'multi_stage': False})
 
-    elif 17 <= shuffle <= 20:
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'intermediate_supervision': False})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'multi_stage': True})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'stride': 4})
-        edit_config(str(list_train_pose_config_path_per_shuffle[j]),
-                {'net_type': 'resnet_101'})
 
     #elif 9 <= shuffle <= 12:
     #    edit_config(str(list_train_pose_config_path_per_shuffle[j]),
