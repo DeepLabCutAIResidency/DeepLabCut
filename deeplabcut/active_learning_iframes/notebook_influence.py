@@ -17,7 +17,7 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 
 import torch
-import torch.nn
+import torch.nn as nn
 from torch.utils.data import Dataset
 
 from torchvision import datasets
@@ -34,8 +34,8 @@ from tqdm import tqdm
 # https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
 
 class CustomImageDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None): # img_dir: parent dir to labeled-data
-        self.df_groundtruth = pd.read_hdf(annotations_file)
+    def __init__(self, df_groundtruth, img_dir, transform=None): # img_dir: parent dir to labeled-data
+        self.df_groundtruth = df_groundtruth #pd.read_hdf(annotations_file)
         self.img_dir = img_dir
         self.transform = transform
         # self.target_transform = target_transform
@@ -54,7 +54,7 @@ class CustomImageDataset(Dataset):
         #     label = self.target_transform(label)
         return image #, label
 
-######################################################
+##################################################################################
 # %%
 # Input data
 reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif_OH'
@@ -94,7 +94,7 @@ preprocess = transforms.Compose([transforms.Resize(224), # transforms.Resize(256
                                                       std=[0.229, 0.224, 0.225]),])
 
 
-dataset = CustomImageDataset(path_to_h5_file,
+dataset = CustomImageDataset(pd.read_hdf(path_to_h5_file), #path_to_h5_file,
                              os.path.join(reference_dir_path),
                              transform=preprocess)
 dataset[0].shape
@@ -166,7 +166,6 @@ feature_tensors = torch.cat(list_feature_tensors_per_img)
 
 #################################################################################
 # %% Compute cosine sim between numpy arrays 
-
 feature_arrays = feature_tensors.cpu().numpy() # nrows= observations, ncols=dimensions of space
 
 # OJO! cosine distance between vectors u and v computed as 1 - cos(angle between u,v)
@@ -174,10 +173,60 @@ dist_array = cdist(feature_arrays,
                     feature_arrays,
                     'cosine')
 
+plt.matshow(dist_array)
+plt.show()
+## %%timeit  
+# dist_array = cdist(feature_arrays,
+                    # feature_arrays,
+                    # 'cosine')
+#################################################################################
+# %% Compute cosine sim between torch tensors -2 
+# https://discuss.pytorch.org/t/compute-the-row-wise-distance-of-two-matrix/4541
+cosi = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+
+cos_dist_array = torch.empty((feature_tensors.shape[0],
+                              feature_tensors.shape[0]))
+for i in range(cos_dist_array.shape[0]):           
+    for j in range(cos_dist_array.shape[1]):                         
+        cos_dist_array[i,j] = 1.0 - cosi(feature_tensors[i,:].unsqueeze(0), 
+                                        feature_tensors[j,:].unsqueeze(0)) #.numpy()
+        # cos_sim.shape
+
+cos_dist_np = cos_dist_array.numpy()
+plt.matshow(cos_dist_np)
+plt.show()
+
+# np.max(abs(cos_dist_np-dist_array))---> 3e07                
+
+
 #############################################################
 # %% Compute cosine similarity between torch tensors  
 
-# Compute from Euclidean distance using law of cosines (ok?)
+# Compute from Euclidean distance using law of cosines (check if ok?)
+# Euclidean distance (non-squared!)
+# not sure if compute mode refers to this: https://www.robots.ox.ac.uk/~albanie/notes/Euclidean_distance_trick.pdf (why a choice?)
+eucl_pairwise_dist = torch.cdist(feature_tensors,
+                                 feature_tensors,
+                                 p=2,
+                                 compute_mode='use_mm_for_euclid_dist_if_necessary') #donot_use_mm_for_euclid_dist
+
+row_vectors_norms = torch.linalg.vector_norm(feature_tensors, ord=2, dim=1)
+col_vectors_norms = torch.linalg.vector_norm(feature_tensors, ord=2, dim=1)
+grid_rows, grid_cols = torch.meshgrid(row_vectors_norms,
+                                      col_vectors_norms, indexing='ij')
+
+                        
+cos_sim = 1 - (eucl_pairwise_dist**2 - grid_rows**2 - grid_cols**2)/\
+              (-2*grid_rows*grid_cols) # add max(x,eps) to denominator?
+
+cos_sim_np = cos_sim.cpu().numpy()
+plt.matshow(cos_sim_np)
+plt.show()
+
+#############################################################
+# %% Compute cosine similarity between torch tensors  
+
+# Compute from Euclidean distance using law of cosines (check if ok?)
 # Euclidean distance (non-squared!)
 # not sure if compute mode refers to this: https://www.robots.ox.ac.uk/~albanie/notes/Euclidean_distance_trick.pdf (why a choice?)
 eucl_pairwise_dist = torch.cdist(feature_tensors,
@@ -190,21 +239,30 @@ sq_eucl_pairwise_dist = eucl_pairwise_dist**2
 row_vectors_norms = torch.linalg.vector_norm(feature_tensors, ord=2, dim=1)
 col_vectors_norms = torch.linalg.vector_norm(feature_tensors, ord=2, dim=1)
 
-cos_sim = \
-    (sq_eucl_pairwise_dist - row_vectors_norms**2 - col_vectors_norms**2)/\
-       (-2*row_vectors_norms*col_vectors_norms)
+cos_sim = torch.empty((feature_tensors.shape[0],
+                              feature_tensors.shape[0]))
+for i in range(cos_dist_array.shape[0]):           
+    for j in range(cos_dist_array.shape[1]):                         
+        cos_sim[i,j] = \
+             1 - (sq_eucl_pairwise_dist[i,j] - row_vectors_norms[i]**2 - col_vectors_norms[j]**2)/\
+                 (-2*row_vectors_norms[i]*col_vectors_norms[j]) # add max(x,eps) to denominator?
 
-cos_sim.cpu().numpy()
-plt.matshow(cos_sim)
+cos_sim_np = cos_sim.cpu().numpy()
+plt.matshow(cos_sim_np)
 plt.show()
+
+# np.max(abs(cos_dist_np-dist_array))
+###################################################################
+# %% Checking faster ways to compute cosine similarity....
+# https://github.com/pytorch/pytorch/issues/48306 ---Memory allocation error
+# also here: # https://github.com/pytorch/pytorch/issues/11202 
+cosine_sim = nn.functional.cosine_similarity(feature_tensors[:,None,:], 
+                                             feature_tensors[None,:,:],
+                                             dim=1) 
+
 ##################################################################################
 # %% Compute cosine similarity between torch tensors -1
 # https://github.com/pytorch/pytorch/issues/11202
-# import torch.nn.functional as F
-# feature_tensors.to('cuda:2')
-# # pairwise_sim = F.cosine_similarity(feature_tensors[:, None, :], 
-# #                                    feature_tensors[None, :, :], 
-# #                                    dim=-1)
 
 # def cosine_pairwise(x):
 #     x = x.permute((1, 2, 0))
@@ -213,24 +271,6 @@ plt.show()
 #     return cos_sim_pairwise
 
 # pairwise_sim = cosine_pairwise(feature_tensors.unsqueeze(0))
-#################################################################################
-# %% Compute cosine sim between torch tensors -2 
-# https://discuss.pytorch.org/t/compute-the-row-wise-distance-of-two-matrix/4541
-cosi = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
 
-cos_dist_array = torch.empty((feature_tensors.shape[0],
-                              feature_tensors.shape[0]))
-for i in range(cos_dist_array.shape[0]):           
-    for j in range(cos_dist_array.shape[1]):                         
-        cos_dist_array[i,j] = cosi(feature_tensors[i,:].unsqueeze(0), 
-                                   feature_tensors[j,:].unsqueeze(0)) #.numpy()
-        # cos_sim.shape
-
-cos_dist_np = cos_dist_array.numpy()
-plt.matshow(cos_dist_np)
-plt.show()
-# mmp1 = torch.stack([feature_tensors]*feature_tensors.shape[0])
-# mmp2 = torch.stack([feature_tensors]*feature_tensors.shape[0]).transpose(0,1)
-# mm = torch.sum((mmp1-mmp2)**2,2).squeeze()
 
 # %%
