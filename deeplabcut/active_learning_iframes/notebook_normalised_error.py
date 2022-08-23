@@ -27,6 +27,8 @@ import re
 import argparse
 import yaml
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning) # to supress future warnings...
 
 #########################################
 # %%
@@ -53,7 +55,8 @@ os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 ## Compute normalised error for all shuffles per model
 dict_df_results_per_model = dict()
 dict_px_error_bodypart_per_model = dict()
-dict_px_error_total_per_shuffle = dict()
+dict_px_error_total_per_model = dict()
+dict_norm_px_error_total_per_model = dict()
 
 list_models_dirs = [el for el in os.listdir(parent_dir_path) if el.startswith(model_prefix)]
 list_models_dirs.sort()
@@ -204,8 +207,12 @@ for md in list_models_dirs:
 
         ##############################################################
         # Mean and sigma per bodypart
+        print('----------------------')
+        print('Model {}'.format(md))
+        print('----------------------')
         dict_px_error_bodypart_per_shuffle = dict()
         dict_px_error_total_per_shuffle = dict()
+        dict_norm_px_error_total_per_shuffle = dict()
         for shuffle in list_shuffle_numbers:
                 df_results  = dict_df_results_per_shuffle[shuffle]
                 df_summary_per_bodypart = df_results.describe()
@@ -216,14 +223,32 @@ for md in list_models_dirs:
                 
 
                 # Mean and sigma across all bodyparts
-                px_error_all_bodyparts_and_test_samples = np.nanmean(df_results.drop(labels='likelihood',axis=1,level=1)) # matches result for evaluate fn
+                px_error_all_bodyparts_and_test_samples = np.nanmean(df_results.drop(labels=['distance_norm','likelihood'],axis=1,level=1)) # matches result for evaluate fn
                 dict_px_error_total_per_shuffle.update({shuffle:px_error_all_bodyparts_and_test_samples})
+
+                norm_px_error_all_bodyparts_and_test_samples = np.nanmean(df_results.drop(labels=['distance','likelihood'],axis=1,level=1)) # matches result for evaluate fn
+                dict_norm_px_error_total_per_shuffle.update({shuffle:norm_px_error_all_bodyparts_and_test_samples})
                 print('----------------------')
-                print('Shuffle {}, pixel error all bodyparts and test samples:'.format(shuffle))
-                print(px_error_all_bodyparts_and_test_samples)
+                print('Shuffle {}, (norm) pixel error all bodyparts and test samples:'.format(shuffle))
+                print('({:.2f}) {:.2f}'.format(norm_px_error_all_bodyparts_and_test_samples,
+                                               px_error_all_bodyparts_and_test_samples))
                 print('----------------------')
         ######################################################
         # Add results to model dict
         dict_df_results_per_model[md] = dict_df_results_per_shuffle
         dict_px_error_bodypart_per_model[md] = dict_px_error_bodypart_per_shuffle
         dict_px_error_total_per_model[md] = dict_px_error_total_per_shuffle
+        dict_norm_px_error_total_per_model[md] = dict_norm_px_error_total_per_shuffle
+
+##########################################
+# %% Plot results
+list_md_fractions = [0,0.25,0.5,0.75,1.0]
+color_per_sh_str = ['tab:blue','tab:orange','tab:green']
+for j,md in enumerate(list_models_dirs):
+        for sh in list_shuffle_numbers:
+                norm_px_error_total_one_shuffle = dict_norm_px_error_total_per_shuffle[md][sh]
+                plt.plot(list_md_fractions[j],
+                         dict_norm_px_error_total_per_shuffle[j][sh],
+                         color_per_sh_str[sh])
+plt.show()
+# %%
