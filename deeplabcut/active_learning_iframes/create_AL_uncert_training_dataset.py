@@ -46,6 +46,7 @@ from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import set_infer
 from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import setup_TF_graph_for_inference
 from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import compute_batch_scmaps_per_frame
 from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import compute_mpe_per_bdprt_and_frame
+from deeplabcut.active_learning_iframes.mpe_horse_dataset_utils import compute_mpe_per_frame
 #########################################################################################
 # %%
 # Inputs
@@ -128,28 +129,20 @@ for sh in range(1,NUM_SHUFFLES+1):
     # Prepare batch of images for this shuffle
     list_AL_train_images = list(df_groundtruth.index[map_shuffle_id_to_AL_train_idcs[sh]])
 
-    # Run inference on AL train images
-    scmaps_all_frames = compute_batch_scmaps_per_frame(cfg, 
-                                                        dlc_cfg, 
-                                                        sess, inputs, outputs, 
-                                                        os.path.dirname(cfg_path_for_uncert_snapshot), 
-                                                        list_AL_train_images, 
-                                                        downsampled_img_ny_nx_nc,
-                                                        batch_size_inference)
-
-    # Compute uncertainty (MPE) per bodypart and mean/max per frame
-    mpe_per_frame_and_bprt, \
-    sftmx_per_frame_and_bprt,\
-    loc_max_per_frame_and_bprt,\
-    max_p_per_frame_and_bprt = compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
-                                                                 min_px_btw_peaks,
-                                                                 min_peak_intensity,
-                                                                 max_n_peaks)
-    # compute mean, max and median over all bodyparts per frame                                                             
-    mpe_metrics_per_frame = {'mean': np.mean(mpe_per_frame_and_bprt,axis=-1),
-                             'max': np.max(mpe_per_frame_and_bprt,axis=-1),
-                             'median': np.median(mpe_per_frame_and_bprt,axis=-1)}                                                             
-
+    #---------------------------------
+    # Run inference on selected model and compute mean, max and median MPE per frame
+    mpe_metrics_per_frame,\
+    mpe_per_frame_and_bprt = compute_mpe_per_frame(cfg,
+                                                    dlc_cfg,
+                                                    sess, inputs, outputs,
+                                                    os.path.dirname(cfg_path_for_uncert_snapshot),
+                                                    list_AL_train_images,
+                                                    downsampled_img_ny_nx_nc,
+                                                    batch_size_inference,
+                                                    min_px_btw_peaks,
+                                                    min_peak_intensity,
+                                                    max_n_peaks)  
+    #---------------------------------   
     # Sort idcs by MPE metric and save 
     list_AL_train_idcs_ranked =[id for id, mean_mpe in sorted(zip(map_shuffle_id_to_AL_train_idcs[sh], #idcs from AL train set
                                                                   mpe_metrics_per_frame[mpe_metric_per_frame_str]),
@@ -157,7 +150,14 @@ for sh in range(1,NUM_SHUFFLES+1):
                                                         reverse=True)] # sort by the second element of the tuple in desc order
     # list_AL_train_images_sorted_by_mean_mpe = list(df_groundtruth.index[list_idcs_ranked])
     map_shuffle_id_to_AL_train_idcs_ranked[sh] = list_AL_train_idcs_ranked #idx_AL_train_idcs_to_transfer
+#########################################################################################
+# %% Save pickle... for plot mostly
+# path_to_pickle_w_AL_train_idcs_ranked_by_infl = os.path.join(reference_dir_path,
+#                                                              'horses_AL_OH_train_uncert_ranked_idcs.pkl')
 
+# with open(path_to_pickle_w_AL_train_idcs_ranked_by_infl,'wb') as file:
+#     pickle.dump(map_shuffle_id_to_AL_train_idcs_ranked, file)   
+#                                                          
 #########################################################################################
 # %%
 # Create training datasets
@@ -238,8 +238,8 @@ for fr_AL_samples in list_fraction_AL_frames:
 # %%
 #########################################
 # Check AL000: picke idcs against df data
-fr_AL_samples = 50
-shuffle_id = 3
+fr_AL_samples = 25
+shuffle_id = 1
 
 model_dir_path = os.path.join(reference_dir_path, 
                               model_subdir_prefix.format(fr_AL_samples)) 
