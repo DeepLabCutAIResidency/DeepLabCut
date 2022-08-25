@@ -302,3 +302,45 @@ def compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
             loc_max_per_frame_and_bprt, \
             max_p_per_frame_and_bprt
 #####################################################################################################
+
+
+def compute_mpe_per_frame(cfg,
+                          dlc_cfg,
+                          sess, inputs, outputs,
+                          parent_directory, #cfg_path_for_uncert_snapshot,
+                          list_AL_train_images,
+                          downsampled_img_ny_nx_nc,
+                          batch_size_inference,
+                          min_px_btw_peaks,
+                          min_peak_intensity,
+                          max_n_peaks):
+    '''
+    Compute scormaps per bdprt and frame, and MPE per bdprt and frame
+    - Run inference on AL train images
+    - Compute uncertainty (MPE) per bodypart and frame
+    - Compute mean, median and max per frame
+
+    '''
+    # Run inference on AL train images
+    scmaps_all_frames = compute_batch_scmaps_per_frame(cfg, 
+                                                        dlc_cfg, 
+                                                        sess, inputs, outputs, 
+                                                        parent_directory,
+                                                        list_AL_train_images, 
+                                                        downsampled_img_ny_nx_nc,
+                                                        batch_size_inference)
+
+    # Compute uncertainty (MPE) per bodypart and mean/max per frame
+    mpe_per_frame_and_bprt, \
+    sftmx_per_frame_and_bprt,\
+    loc_max_per_frame_and_bprt,\
+    max_p_per_frame_and_bprt = compute_mpe_per_bdprt_and_frame(scmaps_all_frames,
+                                                                 min_px_btw_peaks,
+                                                                 min_peak_intensity,
+                                                                 max_n_peaks)
+    # compute mean, max and median over all bodyparts per frame                                                             
+    mpe_metrics_per_frame = {'mean': np.mean(mpe_per_frame_and_bprt,axis=-1),
+                             'max': np.max(mpe_per_frame_and_bprt,axis=-1),
+                             'median': np.median(mpe_per_frame_and_bprt,axis=-1)}     
+
+    return mpe_metrics_per_frame, mpe_per_frame_and_bprt
