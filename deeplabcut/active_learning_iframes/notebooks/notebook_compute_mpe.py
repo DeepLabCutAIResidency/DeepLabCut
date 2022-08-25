@@ -32,13 +32,13 @@ from deeplabcut.pose_estimation_tensorflow.core.predict_multianimal import find_
 #####################################################################################################
 # %%
 ## Inputs 
-cfg_path = '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'
+cfg_path = '/home/sofia/datasets/Horse10_AL_unif_OH/Horse10_AL_unif000/config.yaml'
     # '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/config.yaml'--100k ITERS
     # '/home/sofia/datasets/Horse10_AL_unif_fr/Horse10_AL_unif000/config.yaml'--200k ITERS
 shuffle = 1
 modelprefix = ''
 
-frame_path = '/home/sofia/datasets/Horse10_AL_unif/Horse10_AL_unif000/labeled-data/ChestnutHorseLight/0243.png'
+frame_path = '/home/sofia/datasets/Horse10_AL_unif_OH/Horse10_AL_unif000/labeled-data/ChestnutHorseLight/0243.png'
 
 gpu_to_use = 1
 ##################################################################################################
@@ -113,8 +113,8 @@ scmap, locref, pose = predict.getpose(frame, #np array # (162, 288, 3)
 # %%  Compute uncertainty score per bodypart
 
 min_px_btw_peaks = 2 # Peaks are the local maxima in a region of `2 * min_distance + 1` (i.e. peaks are separated by at least `min_distance`).
-min_peak_intensity = 0.005 # 0.001
-max_n_peaks = float('inf')
+min_peak_intensity = 0 #.005 # 0.001
+max_n_peaks = 5 #float('inf')
 all_joints_names = dlc_cfg["all_joints_names"]
 
 flag_plot_max_p_per_bdprt = True

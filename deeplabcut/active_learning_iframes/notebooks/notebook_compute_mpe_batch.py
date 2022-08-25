@@ -272,7 +272,7 @@ max_n_peaks = 5#float('inf')
 flag_plot_max_p_per_bdprt = True
 
 # GPU
-gpu_to_use = 0
+gpu_to_use = 1
 ##################################################################################################
 # %%
 ## Load model config
