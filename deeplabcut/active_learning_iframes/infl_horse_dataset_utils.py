@@ -40,8 +40,14 @@ class CustomImageDataset(Dataset):
             image = self.transform(image)
         return image #, label
 
+def pairwise_cosine_distance(x, eps=1e-8):
+    norm = x.norm(p=2, dim=1, keepdim=True)
+    return 1 - torch.mm(x, x.t()) / (norm * norm.t()).clamp(min=eps)
 
-
+def pairwise_cosine_distance_two_inputs(x,y, eps=1e-8):
+    norm_x = x.norm(p=2, dim=1, keepdim=True)
+    norm_y = y.norm(p=2, dim=1, keepdim=True)
+    return 1 - (torch.mm(x, y.t()) / (norm_x * norm_y).clamp(min=eps))
 #####################################################################################
 # def rank_idcs_by_influence(idcs_to_rank,
 #                            idcs_for_reference,

@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
+# import timeit
 
 import torch
 import torch.nn as nn
@@ -26,26 +27,26 @@ from PIL import Image
 from tqdm import tqdm
 
 
-from deeplabcut.active_learning_iframes.infl_horse_dataset_utils import CustomImageDataset
+from deeplabcut.active_learning_iframes.infl_horse_dataset_utils import CustomImageDataset, pairwise_cosine_distance, pairwise_cosine_distance_two_inputs
 #####################################################
 # %%
 # Inputs
-reference_dir_path = '/home/sofia/datasets/Horse10_AL_unif_OH'
-path_to_pickle_w_base_idcs = os.path.join(reference_dir_path,
-                                          'horses_AL_OH_train_test_idcs_split.pkl') #TODO these should probably be a unique file, not copies over each AL approach
+path_to_pickle_w_base_idcs = '/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_test_idcs_split.pkl' 
+reference_dir_path = '/home/sofia/datasets/Horse10_AL_infl_OH'
 path_to_h5_file = os.path.join(reference_dir_path,  
                               'training-datasets/iteration-0/',
                               'UnaugmentedDataSet_HorsesMay8/CollectedData_Byron.h5') # do not use h5 in labeled-data!
 
-gpu_to_use = 0 # with gpu faster but I get out of memory error
+gpu_to_use = 1 # with gpu faster but I get out of memory error
 alexnet_node_output_str = 'classifier.2' # alexnet layer to get feature map at (for us, output of fc6)
 dataloader_params = {'batch_size': 64,
-                    'shuffle': False,
-                    'num_workers': 6}
+                     'shuffle': False,
+                     'num_workers': 6}
 
-output_ranked_idcs_pickle_path = '/home/sofia/datasets/Horse10_AL_infl_OH/horses_AL_OH_train_infl_ranked_idcs.pkl'
+output_ranked_idcs_pickle_path = os.path.join(os.path.dirname(path_to_pickle_w_base_idcs),
+                                              'horses_AL_OH_train_infl_ranked_idcs.pkl')
 
-###########################################################
+###############################################################################
 # %% Load train/test base indices from pickle
 with open(path_to_pickle_w_base_idcs,'rb') as file:
     [map_shuffle_id_to_base_train_idcs,
@@ -120,11 +121,15 @@ for sh in range(1,NUM_SHUFFLES+1):
     # - Compute cosine distance (1-cos_similarity)) between feature vectors
     # feature_arrays = feature_tensors.numpy() # feature_tensors.cpu().numpy() # nrows= observations, ncols=dimensions of space
 
-    # OJO! cosine distance between vectors u and v computed as 1 - cos(angle between u,v)
+    dist_array_1 = pairwise_cosine_distance_two_inputs(feature_arrays[query_idcs,:],
+                                                       feature_arrays[ref_idcs,:])
+
+    # # OJO! cosine distance between vectors u and v computed as 1 - cos(angle between u,v)
     dist_array = cdist(feature_arrays[query_idcs,:], # rows in output matrix- query
                        feature_arrays[ref_idcs,:], # cols - ref?
                        'cosine')
 
+    # check same result
     # ------------------------------------------------------------------                   
     # - Rank idcs by their sum of cosine distance to others
     sum_of_dist_per_query_idx  = np.sum(dist_array, axis=1)
@@ -135,6 +140,13 @@ for sh in range(1,NUM_SHUFFLES+1):
 
     # save
     map_shuffle_id_to_AL_train_idcs_ranked[sh] = list_query_idcs_ranked
+
+# %% save for timeit
+
+with open('feature_tensors.pkl','wb') as file:
+     pickle.dump(feature_tensors,file) #feature_tensors
+with open('feature_arrays.pkl','wb') as file:
+     pickle.dump(feature_arrays,file) #feature_tensors
 
 
 #####################################################################
