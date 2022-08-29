@@ -36,7 +36,6 @@ import pickle
 import pandas as pd
 import numpy as np
 import math
-# import random
 
 from deeplabcut.utils.auxiliaryfunctions import read_config, edit_config
 from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_training_dataset
@@ -46,8 +45,8 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 ### Inputs
 
 # parent directory and base data
-AL_strategy_str = 'AL_uncert_kmeans_rev' # uniform sampling: AL_unif; AL_uncert; AL_infl
-flag_reverse_sampled_idcs = True # whether to start sampling from the end of ranked list
+AL_strategy_str = 'AL_unif_small' # uniform sampling: AL_unif; AL_uncert; AL_infl
+flag_reverse_sampled_idcs = False # whether to start sampling from the end of ranked list
 
 reference_dir_path = f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' 
 path_to_h5_file = os.path.join(reference_dir_path,  
@@ -57,11 +56,11 @@ path_to_pickle_w_base_idcs = '/home/sofia/datasets/Horse10_OH_outputs/horses_AL_
 
 # models subdirectory prefix
 model_subdir_prefix = 'Horse10_{}{:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
-list_fraction_AL_frames = [0, 25, 50, 75, 100] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
+list_fraction_AL_frames = [0, 5, 10, 15, 20, 25] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
 # path to train AL idcs ranked by X
-# if sampling unformly, set to empty string
-path_to_pickle_w_AL_train_idcs_ranked = '/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_uncert_kmeans_ranked_idcs.pkl'
+# if empty string: frames are sampled uniformly
+path_to_pickle_w_AL_train_idcs_ranked = '' #/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_uncert_kmeans_ranked_idcs.pkl'
 
 # train config template (with adam params)
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
@@ -78,11 +77,13 @@ with open(path_to_pickle_w_base_idcs,'rb') as file:
 
 #########################################################
 # %% Check
-if bool(path_to_pickle_w_AL_train_idcs_ranked == '') !=  bool(AL_strategy_str=='AL_unif'):
+if bool(path_to_pickle_w_AL_train_idcs_ranked == '') !=  bool('AL_unif' in AL_strategy_str):
     print('ERROR: there is a mismatch between the AL inputs. \
           Either a uniform strategy is selected but a pickle with ranked idcs is provided, or a \
           the pickle file path is empty but a strategy different from uniform is selected')  
     sys.exit()
+elif (path_to_pickle_w_AL_train_idcs_ranked == '') and ('AL_unif' in AL_strategy_str):
+    print('Active learning sampling: uniform across frames (ct step)')
 ###########################################################
 # %%
 ## Create  dir structure for each AL model
@@ -136,7 +137,7 @@ for fr_AL_samples in list_fraction_AL_frames:
         
         # sample AL idcs
         n_AL_samples = math.floor(fr_AL_samples*len(map_shuffle_id_to_AL_train_idcs[sh])/100)
-        if AL_strategy_str=='AL_unif':
+        if bool(path_to_pickle_w_AL_train_idcs_ranked == ''): #AL_strategy_str=='AL_unif':
             #---------------------------------------------------------------------------
             # Compute indices of AL train indices to transfer to train set ---sample randomly instead?
             # n_AL_samples = math.floor(fr_AL_samples*len(list_AL_train_idcs)/100)
