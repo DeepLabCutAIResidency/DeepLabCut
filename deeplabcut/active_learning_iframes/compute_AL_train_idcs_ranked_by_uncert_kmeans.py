@@ -75,9 +75,6 @@ kmeans_n_clusters = 9 # expected number of horses
 kmeans_max_iter = 1000
 kmeans_random_state = 0
 
-# train config template (with adam params)
-pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
-
 
 ############################################################
 # %% Compute AlexNet features for the full h5 dataset
