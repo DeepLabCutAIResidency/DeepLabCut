@@ -44,6 +44,12 @@ for md in list_models_dirs:
 
     ### Get config path
     config_path_one_model = os.path.join(parent_dir_path, md,'config.yaml')
+
+    #-----------
+    # edit to evaluate only last snapshot
+    edit_config(config_path_one_model, {'snapshotindex':-1})
+    #---------
+
     cfg = read_config(config_path_one_model)
     list_train_fractions_from_config = cfg['TrainingFraction']
 
@@ -70,7 +76,7 @@ for md in list_models_dirs:
             list_train_fractions_from_config.index(dict_training_fraction_per_shuffle[sh])
 
     ######################################
-    # Train every shuffle
+    # Train every shuffle---set config to snapshot -1 only?
     for sh in list_shuffle_numbers: 
         deeplabcut.evaluate_network(config_path_one_model, # config.yaml, common to all models
                                     Shuffles=[sh],
