@@ -45,7 +45,7 @@ from deeplabcut.generate_training_dataset.trainingsetmanipulation import create_
 ### Inputs
 
 # parent directory and base data
-AL_strategy_str = 'AL_unif_small' # uniform sampling: AL_unif; AL_uncert; AL_infl
+AL_strategy_str = 'AL_infl_kmeans' # uniform sampling: AL_unif; AL_uncert; AL_infl
 flag_reverse_sampled_idcs = False # whether to start sampling from the end of ranked list
 
 reference_dir_path = f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' 
@@ -56,11 +56,11 @@ path_to_pickle_w_base_idcs = '/home/sofia/datasets/Horse10_OH_outputs/horses_AL_
 
 # models subdirectory prefix
 model_subdir_prefix = 'Horse10_{}{:0=3d}' # subdirs with suffix _AL_unif{}, where {}=n frames from active learning
-list_fraction_AL_frames = [0, 5, 10, 15, 20, 25] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
+list_fraction_AL_frames = [5, 10, 15, 20, 25] # [0,10,50,100,500] # number of frames to sample from AL test set and pass to train set
 
 # path to train AL idcs ranked by X
 # if empty string: frames are sampled uniformly
-path_to_pickle_w_AL_train_idcs_ranked = '' #/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_uncert_kmeans_ranked_idcs.pkl'
+path_to_pickle_w_AL_train_idcs_ranked = '/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_infl_kmeans_ranked_idcs.pkl' #/home/sofia/datasets/Horse10_OH_outputs/horses_AL_OH_train_uncert_kmeans_ranked_idcs.pkl'
 
 # train config template (with adam params)
 pose_cfg_yaml_adam_path = '/home/sofia/DeepLabCut/deeplabcut/adam_pose_cfg.yaml'
