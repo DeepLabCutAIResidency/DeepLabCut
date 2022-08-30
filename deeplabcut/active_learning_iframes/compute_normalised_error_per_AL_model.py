@@ -1,8 +1,6 @@
 """
 TODO
-- all subdirectories that start with model prefix
-- save results as pickle or csv?
-- refactor pck? save results as vars
+- add PCK
 """
 
 #########################################
@@ -34,24 +32,21 @@ warnings.simplefilter(action='ignore', category=FutureWarning) # to supress futu
 #########################################
 # %%
 # Input params
-AL_strategy_str = 'unif' # 'unif', 'uncert'
-parent_dir_path = '/home/sofia/datasets/Horse10_AL_{}_OH'.format(AL_strategy_str) #'/home/sofia/datasets/Horse10_AL_unif_OH'
-model_prefix = 'Horse10_AL_{}'.format(AL_strategy_str) #'Horse10_AL_unif000'
-pickle_output_path = os.path.join(parent_dir_path,
+AL_strategy_str = 'AL_unif_small' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
+parent_dir_path =  f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' #'/home/sofia/datasets/Horse10_AL_{}_OH'.format(AL_strategy_str) #'/home/sofia/datasets/Horse10_AL_unif_OH'
+model_prefix = f'Horse10_{AL_strategy_str}' #'Horse10_AL_unif000'
+pickle_output_path = os.path.join('/home/sofia/datasets/Horse10_OH_outputs',
                                   model_prefix+'_px_error.pkl')
-# GPU_TO_USE = 2
 
 # length_for_normalisation_in_px = 18 # pixels,  for Horses: median_eye2nose_length_px
 # pck_thresh_fraction = 0.3
 # pck_thresh_in_pixels = pck_thresh_fraction*length_for_normalisation_in_px #------
 
-
 TRAIN_ITERATION = 0 # iteration in terms of frames extraction; default is 0, but in stinkbug is 1. can this be extracted?
 
-#############################################################################
-# %%
+
 ## Set 'allow growth' before eval (allow growth bug)
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+# os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 
 ##############################################
@@ -62,7 +57,8 @@ dict_px_error_bodypart_per_model = dict()
 dict_px_error_total_per_model = dict()
 dict_norm_px_error_total_per_model = dict()
 
-list_models_dirs = [el for el in os.listdir(parent_dir_path) if el.startswith(model_prefix) and not el.endswith('pkl')]
+list_models_dirs = [el for el in os.listdir(parent_dir_path) 
+                       if el.startswith(model_prefix) and not el.endswith('pkl')]
 list_models_dirs.sort()
 for md in list_models_dirs:
 
@@ -252,26 +248,47 @@ with open(pickle_output_path,'wb') as file:
                  dict_df_results_per_model,
                  dict_px_error_bodypart_per_model], file)
 
+#############################################
+# %% to load other data to plot:
+# pickle_input_path = '/home/sofia/datasets/Horse10_OH_outputs/Horse10_AL_uncert_kmeans_rev_px_error.pkl'
+# with open(pickle_input_path,'rb') as file:
+#     [dict_px_error_total_per_model,
+#       dict_norm_px_error_total_per_model,
+#        dict_df_results_per_model,
+#        dict_px_error_bodypart_per_model] = pickle.load(file)
+
+# AL_strategy_str = 'AL_uncert_kmeans_rev' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
+# parent_dir_path =  f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' #'/home/sofia/datasets/Horse10_AL_{}_OH'.format(AL_strategy_str) #'/home/sofia/datasets/Horse10_AL_unif_OH'
+# model_prefix = f'Horse10_{AL_strategy_str}' #'Horse10_AL_unif000'
+
+# list_models_dirs = [el for el in os.listdir(parent_dir_path) 
+#                        if el.startswith(model_prefix) and not el.endswith('pkl')]
+# list_models_dirs.sort()
+
 ##########################################
 # %% Plot results
+
+                       
 plt.figure(figsize=(7.5,5.5))
-list_md_fractions = np.arange(0,1.25,0.25)
+col = 'tab:green'
+list_md_fractions = np.arange(0.,0.3,0.05) #np.arange(0,1.25,0.25)
 if model_prefix == 'Horse10_AL_unif':
         for sh in list_shuffle_numbers:
                 plt.plot(list_md_fractions,
                         [dict_norm_px_error_total_per_model[md][sh] for j,md in enumerate(list_models_dirs)],
-                        color='tab:orange',
+                        color=col,
                         marker='o',
                         label=model_prefix)
 else:                                   
         for sh in list_shuffle_numbers:
                 plt.plot(list_md_fractions,
                         [np.nan]+[dict_norm_px_error_total_per_model[md][sh] for j,md in enumerate(list_models_dirs)],
-                        color='tab:orange',
+                        color=col,
                         marker='o',
                         label=model_prefix)
 plt.legend([model_prefix])
 plt.ylim([0,2])
+plt.hlines(0.25,0,0.25,'r', linestyle='--')
 plt.xticks(list_md_fractions,
         [str(int(x*100)) for x in list_md_fractions])
 plt.xlabel('active learning frames (%)')
