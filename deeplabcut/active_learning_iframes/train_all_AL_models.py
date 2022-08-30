@@ -9,7 +9,7 @@ import yaml
 
 #########################################
 ## Input params
-# TODO: add if __main__
+# TODO: add if __main__?
 
 # set up parser
 parser = argparse.ArgumentParser()
