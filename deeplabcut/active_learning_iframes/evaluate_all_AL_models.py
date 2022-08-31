@@ -38,7 +38,8 @@ os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 ##############################################
 ## Eval all shuffles per model
-list_models_dirs = [el for el in os.listdir(parent_dir_path) if el.startswith(model_prefix)]
+list_models_dirs = [el for el in os.listdir(parent_dir_path) 
+                       if el.startswith(model_prefix) and not el.endswith('pkl')]
 list_models_dirs.sort()
 for md in list_models_dirs:
 

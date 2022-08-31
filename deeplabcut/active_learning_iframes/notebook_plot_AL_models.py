@@ -26,8 +26,8 @@ import pickle
 # %% Inputs
 
 parent_dir_path = '/home/sofia/datasets' #'/home/sofia/datasets/Horse10_AL_unif_OH'
-parent_dir_path_list = ['Horse10_AL_unif_small_OH',#'Horse10_AL_unif_OH',
-                        'Horse10_AL_uncert_kmeans_OH','Horse10_AL_uncert_kmeans_rev_OH']
+parent_dir_path_list = ['Horse10_AL_unif_OH','Horse10_AL_uncert_OH','Horse10_AL_infl_OH']#['Horse10_AL_unif_small_OH',#'Horse10_AL_unif_OH',
+                        # 'Horse10_AL_uncert_kmeans_OH','Horse10_AL_uncert_kmeans_rev_OH']
 model_prefix_list = [x[:-3] for x in parent_dir_path_list] #'Horse10_AL_infl' #'Horse10_AL_unif000'
 
 parent_dir_path_list = [os.path.join(parent_dir_path,x) for x in parent_dir_path_list]
@@ -40,7 +40,7 @@ NUM_SHUFFLES = 3
 # %%
 
 plt.figure(figsize=(7.5,5.5))
-list_md_fractions = np.arange(0.,0.3,0.05) #np.arange(0,1.25,0.25)
+list_md_fractions = np.arange(0,1.25,0.25) #np.arange(0.,0.3,0.05) #np.arange(0,1.25,0.25)
 dict_md_colors = {k:v for k,v in zip(model_prefix_list,
                                     ['tab:blue','tab:green','tab:orange'])}
 list_shuffle_numbers = range(1,NUM_SHUFFLES+1)
@@ -93,7 +93,7 @@ plt.show()
 
 plt.figure(figsize=(7.5,5.5))
 
-list_md_fractions = np.arange(0.,0.3,0.05) #np.arange(0,1.25,0.25)
+list_md_fractions = np.arange(0,1.25,0.25) #np.arange(0.,0.3,0.05) #
 dict_sh_colors = {k:v for k,v in zip(list_shuffle_numbers,
                                     ['tab:gray','tab:purple','tab:red'])}
 list_shuffle_numbers = range(1,NUM_SHUFFLES+1)

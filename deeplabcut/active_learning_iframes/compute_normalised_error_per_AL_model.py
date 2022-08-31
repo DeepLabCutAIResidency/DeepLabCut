@@ -32,7 +32,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning) # to supress futu
 #########################################
 # %%
 # Input params
-AL_strategy_str = 'AL_unif_small' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
+AL_strategy_str = 'AL_unif' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
 parent_dir_path =  f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' #'/home/sofia/datasets/Horse10_AL_{}_OH'.format(AL_strategy_str) #'/home/sofia/datasets/Horse10_AL_unif_OH'
 model_prefix = f'Horse10_{AL_strategy_str}' #'Horse10_AL_unif000'
 pickle_output_path = os.path.join('/home/sofia/datasets/Horse10_OH_outputs',
@@ -250,14 +250,8 @@ with open(pickle_output_path,'wb') as file:
 
 #############################################
 # %% to load other data to plot:
-# pickle_input_path = '/home/sofia/datasets/Horse10_OH_outputs/Horse10_AL_uncert_kmeans_rev_px_error.pkl'
-# with open(pickle_input_path,'rb') as file:
-#     [dict_px_error_total_per_model,
-#       dict_norm_px_error_total_per_model,
-#        dict_df_results_per_model,
-#        dict_px_error_bodypart_per_model] = pickle.load(file)
 
-# AL_strategy_str = 'AL_uncert_kmeans_rev' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
+# AL_strategy_str = 'AL_unif_small' # uniform sampling: AL_unif; AL_uncert; AL_infl 'unif' # 'unif', 'uncert'
 # parent_dir_path =  f'/home/sofia/datasets/Horse10_{AL_strategy_str}_OH' #'/home/sofia/datasets/Horse10_AL_{}_OH'.format(AL_strategy_str) #'/home/sofia/datasets/Horse10_AL_unif_OH'
 # model_prefix = f'Horse10_{AL_strategy_str}' #'Horse10_AL_unif000'
 
@@ -265,12 +259,20 @@ with open(pickle_output_path,'wb') as file:
 #                        if el.startswith(model_prefix) and not el.endswith('pkl')]
 # list_models_dirs.sort()
 
+# list_shuffle_numbers = [1,2,3]
+
+# pickle_input_path = f'/home/sofia/datasets/Horse10_OH_outputs/Horse10_{AL_strategy_str}_px_error.pkl'
+# with open(pickle_input_path,'rb') as file:
+#     [dict_px_error_total_per_model,
+#       dict_norm_px_error_total_per_model,
+#        dict_df_results_per_model,
+#        dict_px_error_bodypart_per_model] = pickle.load(file)
 ##########################################
 # %% Plot results
 
                        
 plt.figure(figsize=(7.5,5.5))
-col = 'tab:green'
+col = 'tab:blue'
 list_md_fractions = np.arange(0.,0.3,0.05) #np.arange(0,1.25,0.25)
 if model_prefix == 'Horse10_AL_unif':
         for sh in list_shuffle_numbers:
