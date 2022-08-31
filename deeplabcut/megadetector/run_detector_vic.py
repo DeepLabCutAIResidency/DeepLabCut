@@ -46,6 +46,7 @@ https://github.com/tensorflow/models/blob/master/research/object_detection/infer
 # python detection/run_detector_batch.py "/home/vic/vic_data/dlclive4mega/models/md_v5b.0.0.pt" "/home/vic/vic_data/dlclive4mega/camtrap" "/home/vic/vic_data/dlclive4mega/output2.json" -you need this in order to get the output json
 # batch does not visualize, so in order to do that you need to run:
 # python /home/vic/git/cameratraps/visualization/visualize_detector_output.py "/home/vic/vic_data/dlclive4mega/output2.json" "/home/vic/vic_data/dlclive4mega/camtrap" --confidence 0.8 --images_dir "/home/vic/vic_data/dlclive4mega/camtrap"
+# os.environ['CUDA_VISIBLE_DEVICES'] = '' # If GPU available, comment out.
 
 # import sys
 # for p in sys.path:
@@ -61,11 +62,15 @@ import statistics
 import sys
 import time
 import warnings
+import os
 
 import humanfriendly
 from tqdm import tqdm
 
 import visualization.visualization_utils as viz_utils
+
+#don't use gpu if not available
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # ignoring all "PIL cannot read EXIF metainfo for the images" warnings
 warnings.filterwarnings('ignore', '(Possibly )?corrupt EXIF data', UserWarning)
